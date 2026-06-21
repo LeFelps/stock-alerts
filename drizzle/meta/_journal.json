@@ -8,6 +8,13 @@
       "when": 1782005368195,
       "tag": "0000_curved_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782070674959,
+      "tag": "0001_long_dust",
+      "breakpoints": true
     }
   ]
 }
