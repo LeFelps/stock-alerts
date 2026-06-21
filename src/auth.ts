@@ -4,7 +4,7 @@ import Google from "next-auth/providers/google";
 
 import { db } from "@/db";
 import { accounts, sessions, users, verificationTokens } from "@/db/schema";
-import { isEmailAllowed } from "@/lib/auth/allowed-emails";
+import { isGoogleProfileAllowed } from "@/lib/auth/google-profile";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -24,7 +24,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       return session;
     },
     signIn({ profile }) {
-      return isEmailAllowed(profile?.email);
+      return isGoogleProfileAllowed(profile);
     },
   },
   pages: {
