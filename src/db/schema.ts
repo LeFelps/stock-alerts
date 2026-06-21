@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   pgTable,
   primaryKey,
@@ -14,6 +15,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   emailVerified: timestamp("email_verified", { mode: "date" }),
   image: text("image"),
+  emailAlertsEnabled: boolean("email_alerts_enabled").notNull().default(true),
 });
 
 export const accounts = pgTable(
