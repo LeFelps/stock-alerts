@@ -1,11 +1,9 @@
-import { redirect } from "next/navigation";
-
 import {
   DashboardShell,
   SectionHeader,
 } from "@/app/dashboard/_components/dashboard-shell";
-import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
+import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
 
 const watchlist = [
   {
@@ -34,14 +32,10 @@ const setupTasks = [
 ];
 
 export default async function DashboardPage() {
-  const session = await auth();
-
-  if (!session?.user?.id || !session.user.email) {
-    redirect("/");
-  }
+  const currentProfile = await requireCurrentProfile();
 
   return (
-    <DashboardShell activeSection="overview" userEmail={session.user.email}>
+    <DashboardShell activeSection="overview" userEmail={currentProfile.email}>
       <section className="rounded-lg bg-muted/55 p-5 sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <SectionHeader

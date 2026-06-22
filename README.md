@@ -74,6 +74,8 @@ locally.
 
 - Application code lives under `src/`.
 - App Router routes live in `src/app`.
+- Product behavior lives in feature modules under `src/features`; see
+  `docs/architecture.md`.
 - Drizzle schema lives in `src/db/schema.ts`, with generated SQL migrations in
   `drizzle/`.
 - Shared UI primitives live in `src/components/ui`.
@@ -87,7 +89,7 @@ locally.
 ## Planned MVP Scope
 
 - Authenticated dashboard routes.
-- Watchlist management for stock symbols.
+- Watchlist management for tracked assets.
 - Alert rules for threshold-based price movements.
 - Market data provider integration.
 - Notification delivery hooks for triggered alerts.
