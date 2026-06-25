@@ -15,6 +15,13 @@
       "when": 1782070674959,
       "tag": "0001_long_dust",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782089802278,
+      "tag": "0002_unique_gauntlet",
+      "breakpoints": true
     }
   ]
 }
