@@ -1,7 +1,11 @@
 import {
+  bigint,
   boolean,
+  date,
+  doublePrecision,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -54,6 +58,93 @@ export const watchlistItems = pgTable(
       watchlistItem.symbol,
     ),
     index("watchlist_items_profile_id_index").on(watchlistItem.profileId),
+  ],
+);
+
+export const priceSnapshots = pgTable(
+  "price_snapshots",
+  {
+    symbol: text("symbol").notNull(),
+    marketDate: date("market_date").notNull(),
+    source: text("source").notNull(),
+    currency: text("currency").notNull().default("BRL"),
+    open: doublePrecision("open"),
+    high: doublePrecision("high"),
+    low: doublePrecision("low"),
+    close: doublePrecision("close").notNull(),
+    adjustedClose: doublePrecision("adjusted_close"),
+    volume: bigint("volume", { mode: "number" }),
+    rawPayload: jsonb("raw_payload").$type<Record<string, unknown>>().notNull(),
+    fetchedAt: timestamp("fetched_at", { mode: "date" }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (priceSnapshot) => [
+    primaryKey({
+      columns: [
+        priceSnapshot.symbol,
+        priceSnapshot.marketDate,
+        priceSnapshot.source,
+      ],
+    }),
+    index("price_snapshots_symbol_market_date_index").on(
+      priceSnapshot.symbol,
+      priceSnapshot.marketDate,
+    ),
+  ],
+);
+
+export const indicatorSnapshots = pgTable(
+  "indicator_snapshots",
+  {
+    symbol: text("symbol").notNull(),
+    marketDate: date("market_date").notNull(),
+    source: text("source").notNull(),
+    close: doublePrecision("close").notNull(),
+    ema6: doublePrecision("ema6"),
+    ema13: doublePrecision("ema13"),
+    ema42: doublePrecision("ema42"),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (indicatorSnapshot) => [
+    primaryKey({
+      columns: [indicatorSnapshot.symbol, indicatorSnapshot.marketDate],
+    }),
+    index("indicator_snapshots_symbol_market_date_index").on(
+      indicatorSnapshot.symbol,
+      indicatorSnapshot.marketDate,
+    ),
+  ],
+);
+
+export const signals = pgTable(
+  "signals",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    symbol: text("symbol").notNull(),
+    signalType: text("signal_type").notNull(),
+    reason: text("reason").notNull(),
+    marketDate: date("market_date").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (signal) => [
+    uniqueIndex("signals_profile_symbol_type_date_unique").on(
+      signal.profileId,
+      signal.symbol,
+      signal.signalType,
+      signal.marketDate,
+      signal.reason,
+    ),
+    index("signals_profile_id_created_at_index").on(
+      signal.profileId,
+      signal.createdAt,
+    ),
   ],
 );
 

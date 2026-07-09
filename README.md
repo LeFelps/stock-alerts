@@ -60,10 +60,13 @@ Configure this Google OAuth callback URL for local development:
 http://localhost:3000/api/auth/callback/google
 ```
 
-Future MVP integrations will likely need:
+Manual market data refresh uses the configured market data provider. The MVP
+currently supports brapi.dev. A brapi token is required for tickers outside
+brapi's unrestricted test set:
 
 ```bash
-MARKET_DATA_API_KEY=
+MARKET_DATA_PROVIDER=brapi
+BRAPI_API_TOKEN=
 ```
 
 Keep local values in `.env.local`; `.env*` files are ignored by git. Run
