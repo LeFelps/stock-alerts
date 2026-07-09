@@ -3,8 +3,10 @@ import {
   SectionHeader,
 } from "@/app/dashboard/_components/dashboard-shell";
 import { Badge } from "@/components/ui/badge";
+import { createDrizzleIndicatorSnapshotRepository } from "@/features/indicators/infrastructure/drizzle-indicator-snapshot-repository";
 import { listLatestMarketDataDatesForSymbols } from "@/features/market-data/application/refresh-market-data";
 import { createDrizzlePriceSnapshotRepository } from "@/features/market-data/infrastructure/drizzle-price-snapshot-repository";
+import { MarketOverview } from "@/features/market-data/ui/market-overview";
 import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
 import { listWatchlistItemsForProfile } from "@/features/watchlist/application/manage-watchlist";
 import { createDrizzleWatchlistRepository } from "@/features/watchlist/infrastructure/drizzle-watchlist-repository";
@@ -17,8 +19,11 @@ export default async function DashboardPage() {
     { profileId: currentProfile.profile.id },
     { watchlistRepository },
   );
+  const symbols = watchlistItems.map((item) => item.symbol);
+  const latestIndicators =
+    await createDrizzleIndicatorSnapshotRepository().latestBySymbol(symbols);
   const latestMarketDates = await listLatestMarketDataDatesForSymbols(
-    { symbols: watchlistItems.map((item) => item.symbol) },
+    { symbols },
     { priceSnapshotRepository: createDrizzlePriceSnapshotRepository() },
   );
   const watchlistItemsWithMarketData = watchlistItems.map((item) => ({
@@ -38,6 +43,19 @@ export default async function DashboardPage() {
             Sessão ativa
           </Badge>
         </div>
+      </section>
+
+      <section className="grid gap-6">
+        <SectionHeader
+          title="Monitoramento"
+          description="Resumo dos Ativos acompanhados com preços, médias móveis exponenciais e estado atual."
+        />
+        <MarketOverview
+          items={watchlistItems.map((item) => ({
+            latestIndicator: latestIndicators.get(item.symbol) ?? null,
+            watchlistItem: item,
+          }))}
+        />
       </section>
 
       <section className="grid gap-6">
