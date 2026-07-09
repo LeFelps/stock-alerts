@@ -4,10 +4,10 @@ import { toAuthUserId, toProfileId } from "@/features/profiles/domain/profile";
 
 import { refreshWatchlistItemMarketData } from "./market-data.actions";
 
-const createBrapiMarketDataProviderMock = vi.hoisted(() => vi.fn());
 const createDrizzleIndicatorSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzlePriceSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzleWatchlistRepositoryMock = vi.hoisted(() => vi.fn());
+const createConfiguredMarketDataProviderMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
@@ -40,8 +40,8 @@ vi.mock("../application/refresh-market-data", () => ({
   refreshMarketDataForWatchlistItem: refreshMarketDataForWatchlistItemMock,
 }));
 
-vi.mock("../infrastructure/brapi-market-data-provider", () => ({
-  createBrapiMarketDataProvider: createBrapiMarketDataProviderMock,
+vi.mock("../infrastructure/market-data-provider-factory", () => ({
+  createConfiguredMarketDataProvider: createConfiguredMarketDataProviderMock,
 }));
 
 vi.mock("../infrastructure/drizzle-price-snapshot-repository", () => ({
@@ -59,8 +59,8 @@ vi.mock("next/navigation", () => ({
 
 describe("market data actions", () => {
   beforeEach(() => {
-    createBrapiMarketDataProviderMock.mockReset();
-    createBrapiMarketDataProviderMock.mockReturnValue({
+    createConfiguredMarketDataProviderMock.mockReset();
+    createConfiguredMarketDataProviderMock.mockReturnValue({
       type: "market-data-provider",
     });
     createDrizzleIndicatorSnapshotRepositoryMock.mockReset();
