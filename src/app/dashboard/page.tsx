@@ -3,6 +3,8 @@ import {
   SectionHeader,
 } from "@/app/dashboard/_components/dashboard-shell";
 import { Badge } from "@/components/ui/badge";
+import { listLatestMarketDataDatesForSymbols } from "@/features/market-data/application/refresh-market-data";
+import { createDrizzlePriceSnapshotRepository } from "@/features/market-data/infrastructure/drizzle-price-snapshot-repository";
 import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
 import { listWatchlistItemsForProfile } from "@/features/watchlist/application/manage-watchlist";
 import { createDrizzleWatchlistRepository } from "@/features/watchlist/infrastructure/drizzle-watchlist-repository";
@@ -10,10 +12,19 @@ import { WatchlistManagement } from "@/features/watchlist/ui/watchlist-managemen
 
 export default async function DashboardPage() {
   const currentProfile = await requireCurrentProfile();
+  const watchlistRepository = createDrizzleWatchlistRepository();
   const watchlistItems = await listWatchlistItemsForProfile(
     { profileId: currentProfile.profile.id },
-    { watchlistRepository: createDrizzleWatchlistRepository() },
+    { watchlistRepository },
   );
+  const latestMarketDates = await listLatestMarketDataDatesForSymbols(
+    { symbols: watchlistItems.map((item) => item.symbol) },
+    { priceSnapshotRepository: createDrizzlePriceSnapshotRepository() },
+  );
+  const watchlistItemsWithMarketData = watchlistItems.map((item) => ({
+    ...item,
+    latestMarketDate: latestMarketDates.get(item.symbol) ?? null,
+  }));
 
   return (
     <DashboardShell activeSection="overview" userEmail={currentProfile.email}>
@@ -34,7 +45,7 @@ export default async function DashboardPage() {
           title="Lista de acompanhamento"
           description="Adicione e organize os Ativos que você deseja monitorar."
         />
-        <WatchlistManagement items={watchlistItems} />
+        <WatchlistManagement items={watchlistItemsWithMarketData} />
       </section>
     </DashboardShell>
   );

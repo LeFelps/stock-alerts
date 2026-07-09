@@ -1,7 +1,11 @@
 import {
+  bigint,
   boolean,
+  date,
+  doublePrecision,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -54,6 +58,39 @@ export const watchlistItems = pgTable(
       watchlistItem.symbol,
     ),
     index("watchlist_items_profile_id_index").on(watchlistItem.profileId),
+  ],
+);
+
+export const priceSnapshots = pgTable(
+  "price_snapshots",
+  {
+    symbol: text("symbol").notNull(),
+    marketDate: date("market_date").notNull(),
+    source: text("source").notNull(),
+    currency: text("currency").notNull().default("BRL"),
+    open: doublePrecision("open"),
+    high: doublePrecision("high"),
+    low: doublePrecision("low"),
+    close: doublePrecision("close").notNull(),
+    adjustedClose: doublePrecision("adjusted_close"),
+    volume: bigint("volume", { mode: "number" }),
+    rawPayload: jsonb("raw_payload").$type<Record<string, unknown>>().notNull(),
+    fetchedAt: timestamp("fetched_at", { mode: "date" }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (priceSnapshot) => [
+    primaryKey({
+      columns: [
+        priceSnapshot.symbol,
+        priceSnapshot.marketDate,
+        priceSnapshot.source,
+      ],
+    }),
+    index("price_snapshots_symbol_market_date_index").on(
+      priceSnapshot.symbol,
+      priceSnapshot.marketDate,
+    ),
   ],
 );
 

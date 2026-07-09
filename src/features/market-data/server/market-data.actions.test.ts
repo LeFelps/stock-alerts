@@ -1,0 +1,119 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { toAuthUserId, toProfileId } from "@/features/profiles/domain/profile";
+
+import { refreshWatchlistItemMarketData } from "./market-data.actions";
+
+const createBrapiMarketDataProviderMock = vi.hoisted(() => vi.fn());
+const createDrizzlePriceSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
+const createDrizzleWatchlistRepositoryMock = vi.hoisted(() => vi.fn());
+const notFoundMock = vi.hoisted(() =>
+  vi.fn(() => {
+    throw new Error("NEXT_NOT_FOUND");
+  }),
+);
+const refreshMarketDataForWatchlistItemMock = vi.hoisted(() => vi.fn());
+const requireCurrentProfileMock = vi.hoisted(() => vi.fn());
+const revalidatePathMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/features/profiles/server/current-profile", () => ({
+  requireCurrentProfile: requireCurrentProfileMock,
+}));
+
+vi.mock(
+  "@/features/watchlist/infrastructure/drizzle-watchlist-repository",
+  () => ({
+    createDrizzleWatchlistRepository: createDrizzleWatchlistRepositoryMock,
+  }),
+);
+
+vi.mock("../application/refresh-market-data", () => ({
+  refreshMarketDataForWatchlistItem: refreshMarketDataForWatchlistItemMock,
+}));
+
+vi.mock("../infrastructure/brapi-market-data-provider", () => ({
+  createBrapiMarketDataProvider: createBrapiMarketDataProviderMock,
+}));
+
+vi.mock("../infrastructure/drizzle-price-snapshot-repository", () => ({
+  createDrizzlePriceSnapshotRepository: createDrizzlePriceSnapshotRepositoryMock,
+}));
+
+vi.mock("next/cache", () => ({
+  revalidatePath: revalidatePathMock,
+}));
+
+vi.mock("next/navigation", () => ({
+  notFound: notFoundMock,
+}));
+
+describe("market data actions", () => {
+  beforeEach(() => {
+    createBrapiMarketDataProviderMock.mockReset();
+    createBrapiMarketDataProviderMock.mockReturnValue({
+      type: "market-data-provider",
+    });
+    createDrizzlePriceSnapshotRepositoryMock.mockReset();
+    createDrizzlePriceSnapshotRepositoryMock.mockReturnValue({
+      type: "price-snapshot-repository",
+    });
+    createDrizzleWatchlistRepositoryMock.mockReset();
+    createDrizzleWatchlistRepositoryMock.mockReturnValue({
+      type: "watchlist-repository",
+    });
+    notFoundMock.mockClear();
+    refreshMarketDataForWatchlistItemMock.mockReset();
+    refreshMarketDataForWatchlistItemMock.mockResolvedValue({
+      ok: true,
+      value: { latestMarketDate: "2026-01-02" },
+    });
+    requireCurrentProfileMock.mockReset();
+    requireCurrentProfileMock.mockResolvedValue({
+      email: "user@example.com",
+      profile: {
+        authUserId: toAuthUserId("user-1"),
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        emailAlertsEnabled: true,
+        id: toProfileId("profile-1"),
+        updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    });
+    revalidatePathMock.mockClear();
+  });
+
+  it("refreshes market data for the authenticated profile's watchlist item", async () => {
+    await refreshWatchlistItemMarketData("item-1");
+
+    expect(refreshMarketDataForWatchlistItemMock).toHaveBeenCalledWith(
+      { itemId: "item-1", profileId: toProfileId("profile-1") },
+      {
+        marketDataProvider: { type: "market-data-provider" },
+        priceSnapshotRepository: { type: "price-snapshot-repository" },
+        watchlistRepository: { type: "watchlist-repository" },
+      },
+    );
+    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("renders not found for an out-of-scope watchlist item", async () => {
+    refreshMarketDataForWatchlistItemMock.mockResolvedValue({
+      error: { type: "watchlist_item_not_found" },
+      ok: false,
+    });
+
+    await expect(refreshWatchlistItemMarketData("missing")).rejects.toThrow(
+      "NEXT_NOT_FOUND",
+    );
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("blocks refresh when no current profile is authenticated", async () => {
+    requireCurrentProfileMock.mockRejectedValue(new Error("NEXT_REDIRECT:/"));
+
+    await expect(refreshWatchlistItemMarketData("item-1")).rejects.toThrow(
+      "NEXT_REDIRECT:/",
+    );
+
+    expect(refreshMarketDataForWatchlistItemMock).not.toHaveBeenCalled();
+  });
+});
