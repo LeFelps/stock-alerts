@@ -22,6 +22,7 @@ const brapiHistoricalResultSchema = z
         historicalDataPrice: z.array(brapiHistoricalPriceSchema).optional(),
       })
       .passthrough(),
+    requestedSymbol: z.string().optional(),
     symbol: z.string(),
   })
   .passthrough();
@@ -78,26 +79,28 @@ export function createBrapiMarketDataProvider({
         });
       }
 
+      const normalizedRequestedSymbol = symbol.toUpperCase();
       const body = brapiHistoricalResponseSchema.parse(await response.json());
-      const result = body.results.find(
-        (result) => result.symbol.toUpperCase() === symbol.toUpperCase(),
+      const result = body.results.find((result) =>
+        matchesRequestedSymbol(result, normalizedRequestedSymbol),
       );
 
       if (!result) {
         throw new MarketDataProviderError("Market data response was empty");
       }
 
-      return normalizeHistoricalResult(result);
+      return normalizeHistoricalResult(result, normalizedRequestedSymbol);
     },
   };
 }
 
 function normalizeHistoricalResult(
   result: z.infer<typeof brapiHistoricalResultSchema>,
+  symbol: string,
 ) {
   const fetchedAt = new Date();
   const snapshots = (result.data.historicalDataPrice ?? []).map((price) =>
-    normalizeHistoricalPrice(result, price, fetchedAt),
+    normalizeHistoricalPrice(price, fetchedAt, symbol),
   );
 
   return [...dedupeByMarketDate(snapshots).values()].sort((left, right) =>
@@ -106,9 +109,9 @@ function normalizeHistoricalResult(
 }
 
 function normalizeHistoricalPrice(
-  result: z.infer<typeof brapiHistoricalResultSchema>,
   price: z.infer<typeof brapiHistoricalPriceSchema>,
   fetchedAt: Date,
+  symbol: string,
 ): PriceSnapshot {
   return {
     adjustedClose: price.adjustedClose ?? null,
@@ -121,9 +124,18 @@ function normalizeHistoricalPrice(
     open: price.open ?? null,
     rawPayload: toRecord(price),
     source: BRAPI_SOURCE,
-    symbol: result.symbol.toUpperCase(),
+    symbol,
     volume: price.volume ?? null,
   };
+}
+
+function matchesRequestedSymbol(
+  result: z.infer<typeof brapiHistoricalResultSchema>,
+  symbol: string,
+) {
+  return [result.symbol, result.requestedSymbol].some(
+    (candidate) => candidate?.toUpperCase() === symbol,
+  );
 }
 
 function dedupeByMarketDate(snapshots: PriceSnapshot[]) {
