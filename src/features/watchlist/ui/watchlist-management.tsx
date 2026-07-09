@@ -1,7 +1,8 @@
-import { Pause, Play, Plus, Save, Trash2 } from "lucide-react";
+import { Pause, Play, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { refreshWatchlistItemMarketData } from "@/features/market-data/server/market-data.actions";
 
 import type { WatchlistItem } from "../domain/watchlist-item";
 import {
@@ -16,7 +17,15 @@ const fieldClassName =
 const textareaClassName =
   "min-h-10 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20";
 
-export function WatchlistManagement({ items }: { items: WatchlistItem[] }) {
+export type WatchlistManagementItem = WatchlistItem & {
+  latestMarketDate: string | null;
+};
+
+export function WatchlistManagement({
+  items,
+}: {
+  items: WatchlistManagementItem[];
+}) {
   return (
     <div className="grid gap-8">
       <form
@@ -72,6 +81,9 @@ export function WatchlistManagement({ items }: { items: WatchlistItem[] }) {
                 <th className="border-b px-3 py-3 font-medium">Código</th>
                 <th className="border-b px-3 py-3 font-medium">Nome</th>
                 <th className="border-b px-3 py-3 font-medium">Observações</th>
+                <th className="border-b px-3 py-3 font-medium">
+                  Dados de mercado
+                </th>
                 <th className="border-b px-3 py-3 font-medium">Status</th>
                 <th className="border-b px-3 py-3 text-right font-medium">
                   Ações
@@ -90,9 +102,10 @@ export function WatchlistManagement({ items }: { items: WatchlistItem[] }) {
   );
 }
 
-function WatchlistRow({ item }: { item: WatchlistItem }) {
+function WatchlistRow({ item }: { item: WatchlistManagementItem }) {
   const formId = `watchlist-item-${item.id}`;
   const updateAction = updateWatchlistItem.bind(null, item.id);
+  const refreshAction = refreshWatchlistItemMarketData.bind(null, item.id);
   const toggleAction = setWatchlistItemEnabled.bind(
     null,
     item.id,
@@ -145,12 +158,28 @@ function WatchlistRow({ item }: { item: WatchlistItem }) {
         />
       </td>
       <td className="border-b px-3 py-3 align-top">
+        <div className="grid gap-1">
+          <span className="text-sm font-medium">
+            {formatMarketDate(item.latestMarketDate)}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            Último pregão salvo
+          </span>
+        </div>
+      </td>
+      <td className="border-b px-3 py-3 align-top">
         <Badge variant={item.enabled ? "default" : "secondary"}>
           {item.enabled ? "Ativo" : "Pausado"}
         </Badge>
       </td>
       <td className="border-b px-3 py-3 align-top">
         <div className="flex justify-end gap-2">
+          <form action={refreshAction}>
+            <Button size="sm" type="submit" variant="outline">
+              <RefreshCw aria-hidden="true" className="size-4" />
+              Atualizar
+            </Button>
+          </form>
           <Button form={formId} size="sm" type="submit" variant="outline">
             <Save aria-hidden="true" className="size-4" />
             Salvar
@@ -180,4 +209,14 @@ function WatchlistRow({ item }: { item: WatchlistItem }) {
       </td>
     </tr>
   );
+}
+
+function formatMarketDate(marketDate: string | null) {
+  if (!marketDate) {
+    return "Sem dados";
+  }
+
+  const [year, month, day] = marketDate.split("-");
+
+  return `${day}/${month}/${year}`;
 }
