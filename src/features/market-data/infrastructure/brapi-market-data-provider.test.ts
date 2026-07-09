@@ -46,7 +46,7 @@ describe("brapi market data provider", () => {
     );
 
     const provider = createBrapiMarketDataProvider({
-      apiKey: "secret-token",
+      apiToken: "secret-token",
       fetchFn,
       range: "5d",
     });

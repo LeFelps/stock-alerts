@@ -35,7 +35,7 @@ const brapiHistoricalResponseSchema = z
 type FetchFn = typeof fetch;
 
 type BrapiMarketDataProviderOptions = {
-  apiKey?: string;
+  apiToken?: string;
   fetchFn?: FetchFn;
   range?: string;
 };
@@ -51,7 +51,7 @@ export class MarketDataProviderError extends Error {
 }
 
 export function createBrapiMarketDataProvider({
-  apiKey = process.env.MARKET_DATA_API_KEY,
+  apiToken = process.env.BRAPI_API_TOKEN,
   fetchFn = fetch,
   range = "1y",
 }: BrapiMarketDataProviderOptions = {}): MarketDataProvider {
@@ -68,7 +68,7 @@ export function createBrapiMarketDataProvider({
 
       const response = await fetchFn(url, {
         cache: "no-store",
-        headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
+        headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : undefined,
       });
 
       if (!response.ok) {

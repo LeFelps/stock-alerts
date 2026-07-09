@@ -10,7 +10,7 @@ import { toWatchlistItemId } from "@/features/watchlist/domain/watchlist-item";
 import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
 
 import { refreshMarketDataForWatchlistItem } from "../application/refresh-market-data";
-import { createBrapiMarketDataProvider } from "../infrastructure/brapi-market-data-provider";
+import { createConfiguredMarketDataProvider } from "../infrastructure/market-data-provider-factory";
 import { createDrizzlePriceSnapshotRepository } from "../infrastructure/drizzle-price-snapshot-repository";
 
 const itemIdSchema = z.string().min(1);
@@ -30,7 +30,7 @@ export async function refreshWatchlistItemMarketData(
     },
     {
       indicatorSnapshotRepository: createDrizzleIndicatorSnapshotRepository(),
-      marketDataProvider: createBrapiMarketDataProvider(),
+      marketDataProvider: createConfiguredMarketDataProvider(),
       priceSnapshotRepository: createDrizzlePriceSnapshotRepository(),
       watchlistRepository: createDrizzleWatchlistRepository(),
     },
