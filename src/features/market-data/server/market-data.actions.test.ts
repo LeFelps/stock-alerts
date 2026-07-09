@@ -5,6 +5,7 @@ import { toAuthUserId, toProfileId } from "@/features/profiles/domain/profile";
 import { refreshWatchlistItemMarketData } from "./market-data.actions";
 
 const createBrapiMarketDataProviderMock = vi.hoisted(() => vi.fn());
+const createDrizzleIndicatorSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzlePriceSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzleWatchlistRepositoryMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
@@ -19,6 +20,14 @@ const revalidatePathMock = vi.hoisted(() => vi.fn());
 vi.mock("@/features/profiles/server/current-profile", () => ({
   requireCurrentProfile: requireCurrentProfileMock,
 }));
+
+vi.mock(
+  "@/features/indicators/infrastructure/drizzle-indicator-snapshot-repository",
+  () => ({
+    createDrizzleIndicatorSnapshotRepository:
+      createDrizzleIndicatorSnapshotRepositoryMock,
+  }),
+);
 
 vi.mock(
   "@/features/watchlist/infrastructure/drizzle-watchlist-repository",
@@ -36,7 +45,8 @@ vi.mock("../infrastructure/brapi-market-data-provider", () => ({
 }));
 
 vi.mock("../infrastructure/drizzle-price-snapshot-repository", () => ({
-  createDrizzlePriceSnapshotRepository: createDrizzlePriceSnapshotRepositoryMock,
+  createDrizzlePriceSnapshotRepository:
+    createDrizzlePriceSnapshotRepositoryMock,
 }));
 
 vi.mock("next/cache", () => ({
@@ -52,6 +62,10 @@ describe("market data actions", () => {
     createBrapiMarketDataProviderMock.mockReset();
     createBrapiMarketDataProviderMock.mockReturnValue({
       type: "market-data-provider",
+    });
+    createDrizzleIndicatorSnapshotRepositoryMock.mockReset();
+    createDrizzleIndicatorSnapshotRepositoryMock.mockReturnValue({
+      type: "indicator-snapshot-repository",
     });
     createDrizzlePriceSnapshotRepositoryMock.mockReset();
     createDrizzlePriceSnapshotRepositoryMock.mockReturnValue({
@@ -87,6 +101,7 @@ describe("market data actions", () => {
     expect(refreshMarketDataForWatchlistItemMock).toHaveBeenCalledWith(
       { itemId: "item-1", profileId: toProfileId("profile-1") },
       {
+        indicatorSnapshotRepository: { type: "indicator-snapshot-repository" },
         marketDataProvider: { type: "market-data-provider" },
         priceSnapshotRepository: { type: "price-snapshot-repository" },
         watchlistRepository: { type: "watchlist-repository" },
