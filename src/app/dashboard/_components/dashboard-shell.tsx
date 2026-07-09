@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-export type DashboardSection = "overview" | "settings";
+export type DashboardSection = "overview" | "settings" | "signals";
 
 type DashboardNavItem = {
   label: string;
@@ -36,7 +36,12 @@ const navItems: DashboardNavItem[] = [
     section: "overview",
     href: "/dashboard",
   },
-  { label: "Regras de alerta", icon: Bell },
+  {
+    label: "Sinais",
+    icon: Bell,
+    section: "signals",
+    href: "/dashboard/signals",
+  },
   {
     label: "Configurações",
     icon: Settings,

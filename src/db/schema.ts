@@ -118,6 +118,35 @@ export const indicatorSnapshots = pgTable(
   ],
 );
 
+export const signals = pgTable(
+  "signals",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    symbol: text("symbol").notNull(),
+    signalType: text("signal_type").notNull(),
+    reason: text("reason").notNull(),
+    marketDate: date("market_date").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (signal) => [
+    uniqueIndex("signals_profile_symbol_type_date_unique").on(
+      signal.profileId,
+      signal.symbol,
+      signal.signalType,
+      signal.marketDate,
+    ),
+    index("signals_profile_id_created_at_index").on(
+      signal.profileId,
+      signal.createdAt,
+    ),
+  ],
+);
+
 export const accounts = pgTable(
   "accounts",
   {

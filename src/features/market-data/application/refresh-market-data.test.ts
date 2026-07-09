@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { IndicatorSnapshotRepository } from "@/features/indicators/application/ports";
 import { toProfileId } from "@/features/profiles/domain/profile";
+import type { SignalRepository } from "@/features/signals/application/ports";
 import type { WatchlistRepository } from "@/features/watchlist/application/ports";
 import {
   toWatchlistItemId,
@@ -20,9 +21,10 @@ describe("market data refresh use cases", () => {
     const marketDataProvider = createMarketDataProvider();
     const priceSnapshotRepository = createPriceSnapshotRepository();
     const indicatorSnapshotRepository = createIndicatorSnapshotRepository();
+    const signalRepository = createSignalRepository();
     const item = createWatchlistItem();
-    const snapshots = Array.from({ length: 6 }, (_, index) =>
-      createSnapshot(`2026-01-0${index + 1}`, index + 1),
+    const snapshots = Array.from({ length: 43 }, (_, index) =>
+      createSnapshot(dateFromDayOffset(index), index < 42 ? 100 : 120),
     );
     vi.mocked(watchlistRepository.findByIdForProfile).mockResolvedValue(item);
     vi.mocked(marketDataProvider.fetchDailyPrices).mockResolvedValue(snapshots);
@@ -33,13 +35,14 @@ describe("market data refresh use cases", () => {
         indicatorSnapshotRepository,
         marketDataProvider,
         priceSnapshotRepository,
+        signalRepository,
         watchlistRepository,
       },
     );
 
     expect(result).toEqual({
       ok: true,
-      value: { latestMarketDate: "2026-01-06" },
+      value: { latestMarketDate: "2026-02-12" },
     });
     expect(watchlistRepository.findByIdForProfile).toHaveBeenCalledWith({
       itemId: item.id,
@@ -50,8 +53,19 @@ describe("market data refresh use cases", () => {
     expect(indicatorSnapshotRepository.upsertMany).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
-          ema6: 3.5,
+          ema6: 100,
           marketDate: "2026-01-06",
+          symbol: "PETR4",
+        }),
+      ]),
+    );
+    expect(signalRepository.upsertMany).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          marketDate: "2026-02-12",
+          profileId: toProfileId("profile-1"),
+          reason: "EMA6_CROSSED_ABOVE_EMA42",
+          signalType: "BUY",
           symbol: "PETR4",
         }),
       ]),
@@ -63,6 +77,7 @@ describe("market data refresh use cases", () => {
     const marketDataProvider = createMarketDataProvider();
     const priceSnapshotRepository = createPriceSnapshotRepository();
     const indicatorSnapshotRepository = createIndicatorSnapshotRepository();
+    const signalRepository = createSignalRepository();
     vi.mocked(watchlistRepository.findByIdForProfile).mockResolvedValue(null);
 
     const result = await refreshMarketDataForWatchlistItem(
@@ -74,6 +89,7 @@ describe("market data refresh use cases", () => {
         indicatorSnapshotRepository,
         marketDataProvider,
         priceSnapshotRepository,
+        signalRepository,
         watchlistRepository,
       },
     );
@@ -85,6 +101,7 @@ describe("market data refresh use cases", () => {
     expect(marketDataProvider.fetchDailyPrices).not.toHaveBeenCalled();
     expect(priceSnapshotRepository.upsertMany).not.toHaveBeenCalled();
     expect(indicatorSnapshotRepository.upsertMany).not.toHaveBeenCalled();
+    expect(signalRepository.upsertMany).not.toHaveBeenCalled();
   });
 
   it("loads latest market dates for unique symbols", async () => {
@@ -133,6 +150,15 @@ function createPriceSnapshotRepository(): PriceSnapshotRepository {
 
 function createIndicatorSnapshotRepository(): IndicatorSnapshotRepository {
   return {
+    latestBySymbol: vi.fn(),
+    listForSymbol: vi.fn(),
+    upsertMany: vi.fn(),
+  };
+}
+
+function createSignalRepository(): SignalRepository {
+  return {
+    listForProfile: vi.fn(),
     upsertMany: vi.fn(),
   };
 }
@@ -148,6 +174,10 @@ function createWatchlistItem(): WatchlistItem {
     symbol: "PETR4",
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
   };
+}
+
+function dateFromDayOffset(dayOffset: number) {
+  return new Date(Date.UTC(2026, 0, 1 + dayOffset)).toISOString().slice(0, 10);
 }
 
 function createSnapshot(marketDate: string, close = 10) {

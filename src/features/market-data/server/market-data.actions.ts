@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { createDrizzleIndicatorSnapshotRepository } from "@/features/indicators/infrastructure/drizzle-indicator-snapshot-repository";
+import { createDrizzleSignalRepository } from "@/features/signals/infrastructure/drizzle-signal-repository";
 import { createDrizzleWatchlistRepository } from "@/features/watchlist/infrastructure/drizzle-watchlist-repository";
 import { toWatchlistItemId } from "@/features/watchlist/domain/watchlist-item";
 import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
@@ -32,6 +33,7 @@ export async function refreshWatchlistItemMarketData(
       indicatorSnapshotRepository: createDrizzleIndicatorSnapshotRepository(),
       marketDataProvider: createConfiguredMarketDataProvider(),
       priceSnapshotRepository: createDrizzlePriceSnapshotRepository(),
+      signalRepository: createDrizzleSignalRepository(),
       watchlistRepository: createDrizzleWatchlistRepository(),
     },
   );
