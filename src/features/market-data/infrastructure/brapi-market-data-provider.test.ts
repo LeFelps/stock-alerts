@@ -12,24 +12,32 @@ describe("brapi market data provider", () => {
         JSON.stringify({
           results: [
             {
-              currency: "BRL",
-              historicalDataPrice: [
-                {
-                  adjustedClose: 30.65,
-                  close: 30.65,
-                  date: 1756126800,
-                  high: 30.78,
-                  low: 30.42,
-                  open: 30.47,
-                  volume: 21075300,
-                },
-              ],
-              regularMarketDayHigh: 31.35,
-              regularMarketDayLow: 30.85,
-              regularMarketOpen: 30.54,
-              regularMarketPrice: 31.1,
-              regularMarketTime: "2025-08-29T20:07:36.000Z",
-              regularMarketVolume: 27713400,
+              changed: false,
+              data: {
+                historicalDataPrice: [
+                  {
+                    adjustedClose: 30.65,
+                    close: 30.65,
+                    date: 1756126800,
+                    high: 30.78,
+                    low: 30.42,
+                    open: 30.47,
+                    volume: 21075300,
+                  },
+                  {
+                    adjustedClose: 31.1,
+                    close: 31.1,
+                    date: 1756479600,
+                    high: 31.35,
+                    low: 30.85,
+                    open: 30.54,
+                    volume: 27713400,
+                  },
+                ],
+                usedInterval: "1d",
+                usedRange: "5d",
+              },
+              requestedSymbol: "PETR4",
               symbol: "PETR4",
             },
           ],
@@ -46,7 +54,9 @@ describe("brapi market data provider", () => {
     const snapshots = await provider.fetchDailyPrices("PETR4");
 
     expect(fetchFn).toHaveBeenCalledWith(
-      new URL("https://brapi.dev/api/quote/PETR4?range=5d&interval=1d"),
+      new URL(
+        "https://brapi.dev/api/v2/stocks/historical?symbols=PETR4&range=5d&interval=1d&sortOrder=asc",
+      ),
       {
         cache: "no-store",
         headers: { Authorization: "Bearer secret-token" },

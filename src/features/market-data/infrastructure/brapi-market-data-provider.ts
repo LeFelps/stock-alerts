@@ -15,23 +15,20 @@ const brapiHistoricalPriceSchema = z
   })
   .passthrough();
 
-const brapiQuoteSchema = z
+const brapiHistoricalResultSchema = z
   .object({
-    currency: z.string().optional(),
-    historicalDataPrice: z.array(brapiHistoricalPriceSchema).optional(),
-    regularMarketDayHigh: z.number().nullable().optional(),
-    regularMarketDayLow: z.number().nullable().optional(),
-    regularMarketOpen: z.number().nullable().optional(),
-    regularMarketPrice: z.number().nullable().optional(),
-    regularMarketTime: z.string().nullable().optional(),
-    regularMarketVolume: z.number().nullable().optional(),
+    data: z
+      .object({
+        historicalDataPrice: z.array(brapiHistoricalPriceSchema).optional(),
+      })
+      .passthrough(),
     symbol: z.string(),
   })
   .passthrough();
 
-const brapiQuoteResponseSchema = z
+const brapiHistoricalResponseSchema = z
   .object({
-    results: z.array(brapiQuoteSchema),
+    results: z.array(brapiHistoricalResultSchema),
   })
   .passthrough();
 
@@ -61,11 +58,13 @@ export function createBrapiMarketDataProvider({
   return {
     async fetchDailyPrices(symbol) {
       const url = new URL(
-        `/api/quote/${encodeURIComponent(symbol)}`,
+        "/api/v2/stocks/historical",
         "https://brapi.dev",
       );
+      url.searchParams.set("symbols", symbol);
       url.searchParams.set("range", range);
       url.searchParams.set("interval", "1d");
+      url.searchParams.set("sortOrder", "asc");
 
       const response = await fetchFn(url, {
         cache: "no-store",
@@ -79,28 +78,27 @@ export function createBrapiMarketDataProvider({
         });
       }
 
-      const body = brapiQuoteResponseSchema.parse(await response.json());
-      const quote = body.results.find(
+      const body = brapiHistoricalResponseSchema.parse(await response.json());
+      const result = body.results.find(
         (result) => result.symbol.toUpperCase() === symbol.toUpperCase(),
       );
 
-      if (!quote) {
+      if (!result) {
         throw new MarketDataProviderError("Market data response was empty");
       }
 
-      return normalizeQuote(quote);
+      return normalizeHistoricalResult(result);
     },
   };
 }
 
-function normalizeQuote(quote: z.infer<typeof brapiQuoteSchema>) {
+function normalizeHistoricalResult(
+  result: z.infer<typeof brapiHistoricalResultSchema>,
+) {
   const fetchedAt = new Date();
-  const snapshots = [
-    ...(quote.historicalDataPrice ?? []).map((price) =>
-      normalizeHistoricalPrice(quote, price, fetchedAt),
-    ),
-    normalizeCurrentQuote(quote, fetchedAt),
-  ].filter((snapshot): snapshot is PriceSnapshot => Boolean(snapshot));
+  const snapshots = (result.data.historicalDataPrice ?? []).map((price) =>
+    normalizeHistoricalPrice(result, price, fetchedAt),
+  );
 
   return [...dedupeByMarketDate(snapshots).values()].sort((left, right) =>
     left.marketDate.localeCompare(right.marketDate),
@@ -108,14 +106,14 @@ function normalizeQuote(quote: z.infer<typeof brapiQuoteSchema>) {
 }
 
 function normalizeHistoricalPrice(
-  quote: z.infer<typeof brapiQuoteSchema>,
+  result: z.infer<typeof brapiHistoricalResultSchema>,
   price: z.infer<typeof brapiHistoricalPriceSchema>,
   fetchedAt: Date,
 ): PriceSnapshot {
   return {
     adjustedClose: price.adjustedClose ?? null,
     close: price.close,
-    currency: quote.currency ?? "BRL",
+    currency: "BRL",
     fetchedAt,
     high: price.high ?? null,
     low: price.low ?? null,
@@ -123,34 +121,8 @@ function normalizeHistoricalPrice(
     open: price.open ?? null,
     rawPayload: toRecord(price),
     source: BRAPI_SOURCE,
-    symbol: quote.symbol.toUpperCase(),
+    symbol: result.symbol.toUpperCase(),
     volume: price.volume ?? null,
-  };
-}
-
-function normalizeCurrentQuote(
-  quote: z.infer<typeof brapiQuoteSchema>,
-  fetchedAt: Date,
-): PriceSnapshot | null {
-  const marketDate = marketDateFromIso(quote.regularMarketTime);
-
-  if (!marketDate || quote.regularMarketPrice == null) {
-    return null;
-  }
-
-  return {
-    adjustedClose: quote.regularMarketPrice,
-    close: quote.regularMarketPrice,
-    currency: quote.currency ?? "BRL",
-    fetchedAt,
-    high: quote.regularMarketDayHigh ?? null,
-    low: quote.regularMarketDayLow ?? null,
-    marketDate,
-    open: quote.regularMarketOpen ?? null,
-    rawPayload: toRecord(quote),
-    source: BRAPI_SOURCE,
-    symbol: quote.symbol.toUpperCase(),
-    volume: quote.regularMarketVolume ?? null,
   };
 }
 
@@ -163,16 +135,6 @@ function dedupeByMarketDate(snapshots: PriceSnapshot[]) {
 
 function marketDateFromUnixSeconds(value: number) {
   return new Date(value * 1000).toISOString().slice(0, 10);
-}
-
-function marketDateFromIso(value: string | null | undefined) {
-  if (!value) {
-    return null;
-  }
-
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
