@@ -79,6 +79,42 @@ describe("brapi market data provider", () => {
     expect(snapshots[0]?.rawPayload).toMatchObject({ close: 30.65 });
   });
 
+  it("matches renamed tickers by requestedSymbol and keeps the requested symbol", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          results: [
+            {
+              changed: true,
+              data: {
+                historicalDataPrice: [
+                  {
+                    close: 12.34,
+                    date: 1756126800,
+                  },
+                ],
+              },
+              requestedSymbol: "OLD3",
+              symbol: "NEW3",
+            },
+          ],
+        }),
+      ),
+    );
+    const provider = createBrapiMarketDataProvider({ fetchFn });
+
+    const snapshots = await provider.fetchDailyPrices("OLD3");
+
+    expect(snapshots).toMatchObject([
+      {
+        close: 12.34,
+        marketDate: "2025-08-25",
+        source: "brapi",
+        symbol: "OLD3",
+      },
+    ]);
+  });
+
   it("throws provider errors with response metadata", async () => {
     const fetchFn = vi
       .fn()
