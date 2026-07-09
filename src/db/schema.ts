@@ -1,10 +1,12 @@
 import {
   boolean,
+  index,
   integer,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
@@ -29,6 +31,31 @@ export const profiles = pgTable("profiles", {
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
+
+export const watchlistItems = pgTable(
+  "watchlist_items",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    symbol: text("symbol").notNull(),
+    displayName: text("display_name"),
+    notes: text("notes"),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (watchlistItem) => [
+    uniqueIndex("watchlist_items_profile_id_symbol_unique").on(
+      watchlistItem.profileId,
+      watchlistItem.symbol,
+    ),
+    index("watchlist_items_profile_id_index").on(watchlistItem.profileId),
+  ],
+);
 
 export const accounts = pgTable(
   "accounts",
