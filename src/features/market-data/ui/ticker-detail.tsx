@@ -40,6 +40,11 @@ export function TickerDetail({
           </div>
         </div>
         <form action={refreshAction}>
+          <input
+            name="revalidatePath"
+            type="hidden"
+            value={`/dashboard/tickers/${watchlistItem.symbol}`}
+          />
           <Button type="submit" variant="outline">
             <RefreshCw aria-hidden="true" className="size-4" />
             Atualizar dados
