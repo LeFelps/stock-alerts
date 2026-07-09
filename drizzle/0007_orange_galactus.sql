@@ -1,0 +1,2 @@
+DROP INDEX "signals_profile_symbol_type_date_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "signals_profile_symbol_type_date_unique" ON "signals" USING btree ("profile_id","symbol","signal_type","market_date","reason");

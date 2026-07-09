@@ -37,6 +37,7 @@ export function createDrizzleSignalRepository(
             signals.symbol,
             signals.signalType,
             signals.marketDate,
+            signals.reason,
           ],
         })
         .returning();

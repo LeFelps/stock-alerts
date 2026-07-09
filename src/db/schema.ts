@@ -139,6 +139,7 @@ export const signals = pgTable(
       signal.symbol,
       signal.signalType,
       signal.marketDate,
+      signal.reason,
     ),
     index("signals_profile_id_created_at_index").on(
       signal.profileId,

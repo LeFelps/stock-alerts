@@ -66,6 +66,43 @@ describe("BUY signal detector", () => {
     ]);
   });
 
+  it("emits each distinct BUY reason when both technical rules trigger", () => {
+    const signals = detectBuySignalsForProfile({
+      indicatorSnapshots: [
+        createIndicator({
+          ema6: 9,
+          ema13: 10,
+          ema42: 10,
+          marketDate: "2026-01-01",
+        }),
+        createIndicator({
+          ema6: 12,
+          ema13: 11,
+          ema42: 11,
+          marketDate: "2026-01-02",
+        }),
+      ],
+      profileId: toProfileId("profile-1"),
+    });
+
+    expect(signals).toEqual([
+      {
+        marketDate: "2026-01-02",
+        profileId: "profile-1",
+        reason: "EMA6_CROSSED_ABOVE_EMA42",
+        signalType: "BUY",
+        symbol: "PETR4",
+      },
+      {
+        marketDate: "2026-01-02",
+        profileId: "profile-1",
+        reason: "EMA6_CROSSED_ABOVE_EMA13_WHILE_ABOVE_EMA42",
+        signalType: "BUY",
+        symbol: "PETR4",
+      },
+    ]);
+  });
+
   it("does not detect BUY when required current or previous MME values are missing", () => {
     const signals = detectBuySignalsForProfile({
       indicatorSnapshots: [
