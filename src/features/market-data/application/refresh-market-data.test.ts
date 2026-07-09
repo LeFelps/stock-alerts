@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { IndicatorSnapshotRepository } from "@/features/indicators/application/ports";
 import { toProfileId } from "@/features/profiles/domain/profile";
 import type { WatchlistRepository } from "@/features/watchlist/application/ports";
 import {
@@ -18,22 +19,27 @@ describe("market data refresh use cases", () => {
     const watchlistRepository = createWatchlistRepository();
     const marketDataProvider = createMarketDataProvider();
     const priceSnapshotRepository = createPriceSnapshotRepository();
+    const indicatorSnapshotRepository = createIndicatorSnapshotRepository();
     const item = createWatchlistItem();
-    const snapshots = [
-      createSnapshot("2026-01-02"),
-      createSnapshot("2026-01-03"),
-    ];
+    const snapshots = Array.from({ length: 6 }, (_, index) =>
+      createSnapshot(`2026-01-0${index + 1}`, index + 1),
+    );
     vi.mocked(watchlistRepository.findByIdForProfile).mockResolvedValue(item);
     vi.mocked(marketDataProvider.fetchDailyPrices).mockResolvedValue(snapshots);
 
     const result = await refreshMarketDataForWatchlistItem(
       { itemId: item.id, profileId: item.profileId },
-      { marketDataProvider, priceSnapshotRepository, watchlistRepository },
+      {
+        indicatorSnapshotRepository,
+        marketDataProvider,
+        priceSnapshotRepository,
+        watchlistRepository,
+      },
     );
 
     expect(result).toEqual({
       ok: true,
-      value: { latestMarketDate: "2026-01-03" },
+      value: { latestMarketDate: "2026-01-06" },
     });
     expect(watchlistRepository.findByIdForProfile).toHaveBeenCalledWith({
       itemId: item.id,
@@ -41,12 +47,22 @@ describe("market data refresh use cases", () => {
     });
     expect(marketDataProvider.fetchDailyPrices).toHaveBeenCalledWith("PETR4");
     expect(priceSnapshotRepository.upsertMany).toHaveBeenCalledWith(snapshots);
+    expect(indicatorSnapshotRepository.upsertMany).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ema6: 3.5,
+          marketDate: "2026-01-06",
+          symbol: "PETR4",
+        }),
+      ]),
+    );
   });
 
   it("does not fetch provider data when the watchlist item is outside scope", async () => {
     const watchlistRepository = createWatchlistRepository();
     const marketDataProvider = createMarketDataProvider();
     const priceSnapshotRepository = createPriceSnapshotRepository();
+    const indicatorSnapshotRepository = createIndicatorSnapshotRepository();
     vi.mocked(watchlistRepository.findByIdForProfile).mockResolvedValue(null);
 
     const result = await refreshMarketDataForWatchlistItem(
@@ -54,7 +70,12 @@ describe("market data refresh use cases", () => {
         itemId: toWatchlistItemId("item-1"),
         profileId: toProfileId("profile-1"),
       },
-      { marketDataProvider, priceSnapshotRepository, watchlistRepository },
+      {
+        indicatorSnapshotRepository,
+        marketDataProvider,
+        priceSnapshotRepository,
+        watchlistRepository,
+      },
     );
 
     expect(result).toEqual({
@@ -63,14 +84,15 @@ describe("market data refresh use cases", () => {
     });
     expect(marketDataProvider.fetchDailyPrices).not.toHaveBeenCalled();
     expect(priceSnapshotRepository.upsertMany).not.toHaveBeenCalled();
+    expect(indicatorSnapshotRepository.upsertMany).not.toHaveBeenCalled();
   });
 
   it("loads latest market dates for unique symbols", async () => {
     const priceSnapshotRepository = createPriceSnapshotRepository();
     const latestDates = new Map([["PETR4", "2026-01-03"]]);
-    vi.mocked(priceSnapshotRepository.latestMarketDatesBySymbol).mockResolvedValue(
-      latestDates,
-    );
+    vi.mocked(
+      priceSnapshotRepository.latestMarketDatesBySymbol,
+    ).mockResolvedValue(latestDates);
 
     const result = await listLatestMarketDataDatesForSymbols(
       { symbols: ["PETR4", "PETR4"] },
@@ -105,7 +127,12 @@ function createMarketDataProvider(): MarketDataProvider {
 function createPriceSnapshotRepository(): PriceSnapshotRepository {
   return {
     latestMarketDatesBySymbol: vi.fn(),
-    listForSymbol: vi.fn(),
+    upsertMany: vi.fn(),
+  };
+}
+
+function createIndicatorSnapshotRepository(): IndicatorSnapshotRepository {
+  return {
     upsertMany: vi.fn(),
   };
 }
@@ -123,16 +150,16 @@ function createWatchlistItem(): WatchlistItem {
   };
 }
 
-function createSnapshot(marketDate: string) {
+function createSnapshot(marketDate: string, close = 10) {
   return {
-    adjustedClose: 10,
-    close: 10,
+    adjustedClose: close,
+    close,
     currency: "BRL",
     fetchedAt: new Date("2026-01-03T12:00:00.000Z"),
-    high: 11,
-    low: 9,
+    high: close + 1,
+    low: close - 1,
     marketDate,
-    open: 9.5,
+    open: close - 0.5,
     rawPayload: {},
     source: "brapi" as const,
     symbol: "PETR4",

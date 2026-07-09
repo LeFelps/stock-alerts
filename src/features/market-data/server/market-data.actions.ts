@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
-import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
-import { toWatchlistItemId } from "@/features/watchlist/domain/watchlist-item";
+import { createDrizzleIndicatorSnapshotRepository } from "@/features/indicators/infrastructure/drizzle-indicator-snapshot-repository";
 import { createDrizzleWatchlistRepository } from "@/features/watchlist/infrastructure/drizzle-watchlist-repository";
+import { toWatchlistItemId } from "@/features/watchlist/domain/watchlist-item";
+import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
 
 import { refreshMarketDataForWatchlistItem } from "../application/refresh-market-data";
 import { createBrapiMarketDataProvider } from "../infrastructure/brapi-market-data-provider";
@@ -22,6 +23,7 @@ export async function refreshWatchlistItemMarketData(itemId: string) {
       profileId: profile.id,
     },
     {
+      indicatorSnapshotRepository: createDrizzleIndicatorSnapshotRepository(),
       marketDataProvider: createBrapiMarketDataProvider(),
       priceSnapshotRepository: createDrizzlePriceSnapshotRepository(),
       watchlistRepository: createDrizzleWatchlistRepository(),

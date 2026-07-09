@@ -94,6 +94,30 @@ export const priceSnapshots = pgTable(
   ],
 );
 
+export const indicatorSnapshots = pgTable(
+  "indicator_snapshots",
+  {
+    symbol: text("symbol").notNull(),
+    marketDate: date("market_date").notNull(),
+    source: text("source").notNull(),
+    close: doublePrecision("close").notNull(),
+    ema6: doublePrecision("ema6"),
+    ema13: doublePrecision("ema13"),
+    ema42: doublePrecision("ema42"),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (indicatorSnapshot) => [
+    primaryKey({
+      columns: [indicatorSnapshot.symbol, indicatorSnapshot.marketDate],
+    }),
+    index("indicator_snapshots_symbol_market_date_index").on(
+      indicatorSnapshot.symbol,
+      indicatorSnapshot.marketDate,
+    ),
+  ],
+);
+
 export const accounts = pgTable(
   "accounts",
   {
