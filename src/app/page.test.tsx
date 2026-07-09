@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import SignalsPage from "./dashboard/signals/page";
 import SettingsPage from "./dashboard/settings/page";
 import TickerPage from "./dashboard/tickers/[symbol]/page";
 import DashboardPage from "./dashboard/page";
@@ -9,12 +10,14 @@ import Home from "./page";
 const authMock = vi.hoisted(() => vi.fn());
 const createDrizzleIndicatorSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzlePriceSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
+const createDrizzleSignalRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzleWatchlistRepositoryMock = vi.hoisted(() => vi.fn());
 const findWatchlistItemBySymbolMock = vi.hoisted(() => vi.fn());
 const listLatestMarketDataDatesForSymbolsMock = vi.hoisted(() => vi.fn());
 const listIndicatorSnapshotsForSymbolMock = vi.hoisted(() => vi.fn());
 const latestIndicatorsBySymbolMock = vi.hoisted(() => vi.fn());
 const listPriceSnapshotsForSymbolMock = vi.hoisted(() => vi.fn());
+const listSignalsForProfileMock = vi.hoisted(() => vi.fn());
 const listWatchlistItemsForProfileMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
@@ -60,6 +63,14 @@ vi.mock(
 
 vi.mock("@/features/market-data/server/market-data.actions", () => ({
   refreshWatchlistItemMarketData: vi.fn(),
+}));
+
+vi.mock("@/features/signals/application/manage-signals", () => ({
+  listSignalsForProfile: listSignalsForProfileMock,
+}));
+
+vi.mock("@/features/signals/infrastructure/drizzle-signal-repository", () => ({
+  createDrizzleSignalRepository: createDrizzleSignalRepositoryMock,
 }));
 
 vi.mock("@/features/watchlist/application/manage-watchlist", () => ({
@@ -149,6 +160,10 @@ describe("DashboardPage", () => {
       listForSymbol: listPriceSnapshotsForSymbolMock,
       type: "price-snapshot-repository",
     });
+    createDrizzleSignalRepositoryMock.mockReset();
+    createDrizzleSignalRepositoryMock.mockReturnValue({
+      type: "signal-repository",
+    });
     createDrizzleWatchlistRepositoryMock.mockReset();
     createDrizzleWatchlistRepositoryMock.mockReturnValue({
       findBySymbol: findWatchlistItemBySymbolMock,
@@ -163,6 +178,8 @@ describe("DashboardPage", () => {
     listLatestMarketDataDatesForSymbolsMock.mockResolvedValue(new Map());
     listPriceSnapshotsForSymbolMock.mockReset();
     listPriceSnapshotsForSymbolMock.mockResolvedValue([]);
+    listSignalsForProfileMock.mockReset();
+    listSignalsForProfileMock.mockResolvedValue([]);
     listWatchlistItemsForProfileMock.mockReset();
     listWatchlistItemsForProfileMock.mockResolvedValue([]);
     notFoundMock.mockClear();
@@ -183,7 +200,10 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Sessão ativa")).toBeInTheDocument();
     expect(screen.getByText("user@example.com")).toBeInTheDocument();
     expect(screen.getByText("Visão geral")).toBeInTheDocument();
-    expect(screen.getByText("Regras de alerta")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /Sinais/ })[0]).toHaveAttribute(
+      "href",
+      "/dashboard/signals",
+    );
     expect(
       screen.getAllByRole("link", { name: /Configurações/ })[0],
     ).toHaveAttribute("href", "/dashboard/settings");
@@ -368,6 +388,67 @@ describe("TickerPage", () => {
     ).rejects.toThrow("NEXT_NOT_FOUND");
     expect(listPriceSnapshotsForSymbolMock).not.toHaveBeenCalled();
     expect(listIndicatorSnapshotsForSymbolMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("SignalsPage", () => {
+  beforeEach(() => {
+    createDrizzleSignalRepositoryMock.mockReset();
+    createDrizzleSignalRepositoryMock.mockReturnValue({
+      type: "signal-repository",
+    });
+    listSignalsForProfileMock.mockReset();
+    redirectMock.mockClear();
+    requireCurrentProfileMock.mockReset();
+  });
+
+  it("renders current profile signal history", async () => {
+    requireCurrentProfileMock.mockResolvedValue({
+      email: "user@example.com",
+      profile: createProfile({ emailAlertsEnabled: true }),
+    });
+    listSignalsForProfileMock.mockResolvedValue([
+      {
+        createdAt: new Date("2026-01-02T12:00:00.000Z"),
+        id: "signal-1",
+        marketDate: "2026-01-02",
+        profileId: "profile-1",
+        reason: "EMA6_CROSSED_ABOVE_EMA42",
+        signalType: "BUY",
+        symbol: "PETR4",
+      },
+    ]);
+
+    render(await SignalsPage());
+
+    expect(screen.getByRole("heading", { name: "Sinais" })).toBeInTheDocument();
+    expect(listSignalsForProfileMock).toHaveBeenCalledWith(
+      { profileId: "profile-1" },
+      { signalRepository: { type: "signal-repository" } },
+    );
+    expect(screen.getByText("PETR4")).toBeInTheDocument();
+    expect(screen.getByText("Compra técnica")).toBeInTheDocument();
+    expect(screen.getByText("02/01/2026")).toBeInTheDocument();
+    expect(screen.getByText("MME6 cruzou acima da MME42.")).toBeInTheDocument();
+  });
+
+  it("renders an empty state for profiles without signals", async () => {
+    requireCurrentProfileMock.mockResolvedValue({
+      email: "user@example.com",
+      profile: createProfile({ emailAlertsEnabled: true }),
+    });
+    listSignalsForProfileMock.mockResolvedValue([]);
+
+    render(await SignalsPage());
+
+    expect(screen.getByText("Nenhum Sinal registrado.")).toBeInTheDocument();
+  });
+
+  it("redirects signed-out users to the sign-in page", async () => {
+    requireCurrentProfileMock.mockRejectedValue(new Error("NEXT_REDIRECT:/"));
+
+    await expect(SignalsPage()).rejects.toThrow("NEXT_REDIRECT:/");
+    expect(listSignalsForProfileMock).not.toHaveBeenCalled();
   });
 });
 

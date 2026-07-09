@@ -6,6 +6,7 @@ import { refreshWatchlistItemMarketData } from "./market-data.actions";
 
 const createDrizzleIndicatorSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzlePriceSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
+const createDrizzleSignalRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzleWatchlistRepositoryMock = vi.hoisted(() => vi.fn());
 const createConfiguredMarketDataProviderMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
@@ -28,6 +29,10 @@ vi.mock(
       createDrizzleIndicatorSnapshotRepositoryMock,
   }),
 );
+
+vi.mock("@/features/signals/infrastructure/drizzle-signal-repository", () => ({
+  createDrizzleSignalRepository: createDrizzleSignalRepositoryMock,
+}));
 
 vi.mock(
   "@/features/watchlist/infrastructure/drizzle-watchlist-repository",
@@ -71,6 +76,10 @@ describe("market data actions", () => {
     createDrizzlePriceSnapshotRepositoryMock.mockReturnValue({
       type: "price-snapshot-repository",
     });
+    createDrizzleSignalRepositoryMock.mockReset();
+    createDrizzleSignalRepositoryMock.mockReturnValue({
+      type: "signal-repository",
+    });
     createDrizzleWatchlistRepositoryMock.mockReset();
     createDrizzleWatchlistRepositoryMock.mockReturnValue({
       type: "watchlist-repository",
@@ -104,6 +113,7 @@ describe("market data actions", () => {
         indicatorSnapshotRepository: { type: "indicator-snapshot-repository" },
         marketDataProvider: { type: "market-data-provider" },
         priceSnapshotRepository: { type: "price-snapshot-repository" },
+        signalRepository: { type: "signal-repository" },
         watchlistRepository: { type: "watchlist-repository" },
       },
     );
