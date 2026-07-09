@@ -20,13 +20,12 @@ export function createDrizzleWatchlistRepository(
       const [createdItem] = await database
         .insert(watchlistItems)
         .values(command)
+        .onConflictDoNothing({
+          target: [watchlistItems.profileId, watchlistItems.symbol],
+        })
         .returning();
 
-      if (!createdItem) {
-        throw new Error("Failed to create watchlist item");
-      }
-
-      return toWatchlistItem(createdItem);
+      return createdItem ? toWatchlistItem(createdItem) : null;
     },
 
     async delete(command) {

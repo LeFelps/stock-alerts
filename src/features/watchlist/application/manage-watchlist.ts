@@ -32,7 +32,9 @@ export async function createWatchlistItemForProfile(
     return err({ type: "duplicate_symbol" } as const);
   }
 
-  return ok(await watchlistRepository.create(command));
+  const createdItem = await watchlistRepository.create(command);
+
+  return createdItem ? ok(createdItem) : err({ type: "duplicate_symbol" });
 }
 
 export async function updateWatchlistItemForProfile(

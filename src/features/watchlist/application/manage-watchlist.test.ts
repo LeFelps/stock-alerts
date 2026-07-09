@@ -77,6 +77,24 @@ describe("watchlist use cases", () => {
     expect(repository.create).not.toHaveBeenCalled();
   });
 
+  it("returns a duplicate result when the insert hits an atomic conflict", async () => {
+    const repository = createRepository();
+    vi.mocked(repository.findBySymbol).mockResolvedValue(null);
+    vi.mocked(repository.create).mockResolvedValue(null);
+
+    const result = await createWatchlistItemForProfile(
+      {
+        displayName: null,
+        notes: null,
+        profileId: toProfileId("profile-1"),
+        symbol: "PETR4",
+      },
+      { watchlistRepository: repository },
+    );
+
+    expect(result).toEqual({ error: { type: "duplicate_symbol" }, ok: false });
+  });
+
   it("scopes updates and duplicate checks by profile and item", async () => {
     const repository = createRepository();
     const item = createItem();

@@ -10,7 +10,7 @@ export type WatchlistItemFields = Pick<
 export type WatchlistRepository = {
   create(
     command: WatchlistItemFields & { profileId: ProfileId },
-  ): Promise<WatchlistItem>;
+  ): Promise<WatchlistItem | null>;
   delete(command: {
     itemId: WatchlistItemId;
     profileId: ProfileId;
