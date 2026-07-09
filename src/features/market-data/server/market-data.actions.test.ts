@@ -110,6 +110,16 @@ describe("market data actions", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard");
   });
 
+  it("revalidates the ticker detail path when submitted from a ticker page", async () => {
+    const formData = new FormData();
+    formData.set("revalidatePath", "/dashboard/tickers/PETR4");
+
+    await refreshWatchlistItemMarketData("item-1", formData);
+
+    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/tickers/PETR4");
+  });
+
   it("renders not found for an out-of-scope watchlist item", async () => {
     refreshMarketDataForWatchlistItemMock.mockResolvedValue({
       error: { type: "watchlist_item_not_found" },

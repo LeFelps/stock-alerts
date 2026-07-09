@@ -14,8 +14,14 @@ import { createBrapiMarketDataProvider } from "../infrastructure/brapi-market-da
 import { createDrizzlePriceSnapshotRepository } from "../infrastructure/drizzle-price-snapshot-repository";
 
 const itemIdSchema = z.string().min(1);
+const revalidatePathSchema = z
+  .string()
+  .regex(/^\/dashboard\/tickers\/[A-Z0-9]{4,12}$/);
 
-export async function refreshWatchlistItemMarketData(itemId: string) {
+export async function refreshWatchlistItemMarketData(
+  itemId: string,
+  formData?: FormData,
+) {
   const { profile } = await requireCurrentProfile();
   const result = await refreshMarketDataForWatchlistItem(
     {
@@ -35,4 +41,11 @@ export async function refreshWatchlistItemMarketData(itemId: string) {
   }
 
   revalidatePath("/dashboard");
+
+  const requestedPath = formData?.get("revalidatePath");
+  const parsedPath = revalidatePathSchema.safeParse(requestedPath);
+
+  if (parsedPath.success) {
+    revalidatePath(parsedPath.data);
+  }
 }
