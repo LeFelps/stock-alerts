@@ -1,36 +1,37 @@
-# Diretrizes de Interface
+# UI Guidelines
 
-A interface do Stock Alerts usa Português do Brasil e deve manter uma aparência
-profissional, minimalista e funcional.
+The Stock Alerts interface uses Brazilian Portuguese and should maintain a
+professional, minimal, and functional appearance.
 
-## Linguagem
+## Language
 
-- Use Português do Brasil em todo texto visível.
-- Prefira textos curtos, diretos e orientados à ação.
-- Use os termos definidos no `CONTEXT.md` para conceitos do produto.
+- Use Brazilian Portuguese for all visible text.
+- Prefer short, direct, action-oriented text.
+- Use the terms defined in `CONTEXT.md` for product concepts.
 
-## Composição
+## Composition
 
-- Use espaçamento generoso como separador visual padrão.
-- Use bordas apenas em controles, tabelas, inputs, painéis de destaque ou
-  separações necessárias para leitura.
-- Evite transformar seções inteiras em cards por padrão.
-- Containers pais controlam a disposição dos filhos com `padding`, `gap`,
-  `space-y-*`, `space-x-*`, grid e flex.
-- Evite margens em elementos filhos, exceto em micro-espaçamentos tipográficos
-  locais.
-- Todo elemento com borda ou fundo próprio deve ter padding adequado.
+- Use generous spacing as the default visual separator.
+- Use borders only on controls, tables, inputs, highlighted panels, or
+  separations required for readability.
+- Avoid turning entire sections into cards by default.
+- Parent containers control child layout with `padding`, `gap`, `space-y-*`,
+  `space-x-*`, grid, and flex.
+- Avoid margins on child elements except for local typographic micro-spacing.
+- Every element with its own border or background should have appropriate
+  padding.
 
-## Cores
+## Colors
 
-- Use uma paleta neutra para estrutura e conteúdo.
-- Use azul como acento principal para navegação ativa e ações primárias.
-- Reserve verde e vermelho para estados financeiros ou semânticos.
-- Badges devem ser discretos por padrão.
+- Use a neutral palette for structure and content.
+- Use blue as the main accent for active navigation and primary actions.
+- Reserve green and red for financial or semantic states.
+- Badges should be subtle by default.
 
-## Componentes
+## Components
 
-- Use tabelas limpas para dados comparáveis.
-- Use divisores leves em tabelas apenas quando melhorarem a leitura.
-- Use primitivas shadcn/Radix para overlays, drawers e componentes interativos.
-- Não aninhe cards dentro de cards.
+- Use clean tables for comparable data.
+- Use light dividers in tables only when they improve readability.
+- Use shadcn/Radix primitives for overlays, drawers, and interactive
+  components.
+- Do not nest cards inside cards.

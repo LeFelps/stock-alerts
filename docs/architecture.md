@@ -1,15 +1,15 @@
-# Arquitetura
+# Architecture
 
-Este app usa modulos por funcionalidade com camadas internas. Rotas do App
-Router devem ficar finas e delegar comportamento de produto para modulos em
+This app uses feature modules with internal layers. App Router routes should
+stay thin and delegate product behavior to modules in
 `src/features`.
 
-## Modulos
+## Modules
 
-Crie um modulo apenas quando ele tiver comportamento real. Nao crie pastas
-vazias para escopo futuro.
+Create a module only when it has real behavior. Do not create empty folders for
+future scope.
 
-Estrutura padrao:
+Default structure:
 
 ```text
 src/features/<feature>/
@@ -20,100 +20,97 @@ src/features/<feature>/
   ui/
 ```
 
-- `domain`: tipos e regras puras do conceito de produto.
-- `application`: casos de uso, portas de repositorio/provedor e tipos Result.
-- `infrastructure`: adaptadores de IO, como Drizzle ou APIs externas.
-- `server`: adaptadores de Next.js, Server Actions e helpers autenticados.
-- `ui`: componentes especificos da funcionalidade.
+- `domain`: pure types and rules for the product concept.
+- `application`: use cases, repository/provider ports, and Result types.
+- `infrastructure`: IO adapters, such as Drizzle or external APIs.
+- `server`: Next.js adapters, Server Actions, and authenticated helpers.
+- `ui`: feature-specific components.
 
-`src/components/ui` continua reservado para primitivas compartilhadas. Layouts
-de rota podem ficar em `src/app` quando forem composicao de navegacao, nao
-comportamento de produto.
+`src/components/ui` remains reserved for shared primitives. Route layouts may
+live in `src/app` when they compose navigation, not product behavior.
 
-## Linguagem
+## Language
 
-Identificadores e pastas usam ingles: `profile`, `watchlist`, `alertRule`,
+Identifiers and folders use English: `profile`, `watchlist`, `alertRule`,
 `alert`, `asset`.
 
-Texto visivel usa Portugues do Brasil e os termos do `CONTEXT.md`: `Perfil`,
-`Ativo`, `Lista de acompanhamento`, `Regra de alerta` e `Alerta`.
+Visible text uses Brazilian Portuguese and the terms from `CONTEXT.md`:
+`Perfil`, `Ativo`, `Lista de acompanhamento`, `Regra de alerta`, and `Alerta`.
 
-## Dependencias
+## Dependencies
 
-Rotas e arquivos `server` podem importar Next.js, Auth.js, actions e adaptadores
-de infraestrutura.
+Routes and `server` files may import Next.js, Auth.js, actions, and
+infrastructure adapters.
 
-Casos de uso em `application` nao importam React, Next.js, Auth.js, Drizzle ou
-variaveis de ambiente. Eles recebem entradas de negocio e dependencias
-explicitamente.
+Use cases in `application` do not import React, Next.js, Auth.js, Drizzle, or
+environment variables. They receive business input and dependencies
+explicitly.
 
-Dominios em `domain` nao importam IO, framework ou UI.
+Domains in `domain` do not import IO, frameworks, or UI.
 
-## Casos de Uso
+## Use Cases
 
-Casos de uso exportam funcoes com a assinatura:
+Use cases export functions with this signature:
 
 ```ts
 useCase(command, deps);
 ```
 
-`command` contem entrada de negocio, incluindo identificadores do Perfil
-autenticado quando necessario. `deps` contem portas como repositorios e
-provedores.
+`command` contains business input, including authenticated `Perfil` identifiers
+when needed. `deps` contains ports such as repositories and providers.
 
-Falhas esperadas retornam Results tipados. Erros inesperados de infraestrutura
-podem ser lancados.
+Expected failures return typed Results. Unexpected infrastructure errors may be
+thrown.
 
-## Repositorios
+## Repositories
 
-Portas de repositorio vivem na camada `application`. Implementacoes Drizzle
-vivem em `infrastructure`.
+Repository ports live in the `application` layer. Drizzle implementations live
+in `infrastructure`.
 
-Repositorios retornam DTOs ou objetos de dominio definidos pelo modulo, nunca
-linhas Drizzle diretamente.
+Repositories return DTOs or domain objects defined by the module, never Drizzle
+rows directly.
 
-Recursos pertencentes a um Perfil devem exigir `profileId` nos metodos de
-repositorio. O repositorio aplica esse filtro para impedir acesso entre Perfis.
-Casos de uso ainda expressam politica de negocio e autorizacao.
+Resources that belong to a `Perfil` must require `profileId` in repository
+methods. The repository applies that filter to prevent access across profiles.
+Use cases still express business policy and authorization.
 
-## Validacao
+## Validation
 
-Use Zod para validar entradas nao confiaveis:
+Use Zod to validate untrusted input:
 
-- `FormData` recebido por Server Actions.
-- respostas de provedores externos.
-- parametros de rota ou payloads de Route Handlers.
+- `FormData` received by Server Actions.
+- responses from external providers.
+- route params or Route Handler payloads.
 
-Dados devem ser parseados na borda antes de chegar aos casos de uso.
+Data should be parsed at the boundary before reaching use cases.
 
 ## App Router
 
-Leia os guias em `node_modules/next/dist/docs/` antes de alterar APIs do
-Next.js. Este projeto usa Next.js 16 App Router.
+Read the guides in `node_modules/next/dist/docs/` before changing Next.js APIs.
+This project uses the Next.js 16 App Router.
 
-Paginas e layouts sao Server Components por padrao. Use Client Components
-apenas para estado, eventos, hooks ou APIs do navegador.
+Pages and layouts are Server Components by default. Use Client Components only
+for state, events, hooks, or browser APIs.
 
-Server Actions sao acessiveis por POST direto. Toda Server Action deve
-autenticar, validar entrada, chamar casos de uso e revalidar ou redirecionar
-apenas na borda.
+Server Actions are reachable by direct POST. Every Server Action must
+authenticate, validate input, call use cases, and revalidate or redirect only at
+the boundary.
 
-## Dados de Mercado e Alertas
+## Market Data and Alerts
 
-Dados de mercado devem passar por uma porta de provedor e adaptadores externos.
-Casos de uso consomem dados normalizados, nao detalhes de `fetch` ou do
-provedor.
+Market data should pass through a provider port and external adapters. Use cases
+consume normalized data, not `fetch` or provider details.
 
-A avaliacao de Regras de alerta deve ser um caso de uso independente de UI e
-Next.js, chamavel futuramente por cron, worker ou Route Handler.
+Alert rule evaluation should be a use case independent from UI and Next.js,
+callable in the future by cron, worker, or Route Handler.
 
-Um Alerta e a ocorrencia de dominio. Email e um canal de entrega de
-infraestrutura, nao um conceito canonico de produto neste momento.
+An `Alerta` is the domain occurrence. Email is an infrastructure delivery
+channel, not a canonical product concept at this time.
 
-## Testes
+## Tests
 
-Novos modulos devem ter testes de casos de uso com repositorios falsos.
-Adaptadores de Server Action devem ser testados quando autenticacao, validacao
-ou revalidacao forem relevantes.
+New modules should have use case tests with fake repositories. Server Action
+adapters should be tested when authentication, validation, or revalidation are
+relevant.
 
-UI deve ter testes focados em comportamento roteado e fluxo do usuario.
+UI should have tests focused on routed behavior and user flow.
