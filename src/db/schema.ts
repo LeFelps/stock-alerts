@@ -180,6 +180,31 @@ export const alertEmailDeliveries = pgTable(
   ],
 );
 
+export const jobRuns = pgTable(
+  "job_runs",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    jobName: text("job_name").notNull(),
+    status: text("status").notNull(),
+    startedAt: timestamp("started_at", { mode: "date" }).notNull(),
+    finishedAt: timestamp("finished_at", { mode: "date" }),
+    durationMs: integer("duration_ms"),
+    error: text("error"),
+    summary: jsonb("summary").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (jobRun) => [
+    index("job_runs_started_at_index").on(jobRun.startedAt),
+    index("job_runs_status_started_at_index").on(
+      jobRun.status,
+      jobRun.startedAt,
+    ),
+  ],
+);
+
 export const accounts = pgTable(
   "accounts",
   {
