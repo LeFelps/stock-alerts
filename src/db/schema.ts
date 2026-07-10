@@ -148,6 +148,38 @@ export const signals = pgTable(
   ],
 );
 
+export const alertEmailDeliveries = pgTable(
+  "alert_email_deliveries",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    signalId: text("signal_id")
+      .notNull()
+      .references(() => signals.id, { onDelete: "cascade" }),
+    recipientEmail: text("recipient_email").notNull(),
+    status: text("status").notNull(),
+    provider: text("provider"),
+    providerMessageId: text("provider_message_id"),
+    providerError: text("provider_error"),
+    skippedReason: text("skipped_reason"),
+    sentAt: timestamp("sent_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (delivery) => [
+    uniqueIndex("alert_email_deliveries_signal_recipient_unique").on(
+      delivery.signalId,
+      delivery.recipientEmail,
+    ),
+    index("alert_email_deliveries_signal_id_index").on(delivery.signalId),
+    index("alert_email_deliveries_status_created_at_index").on(
+      delivery.status,
+      delivery.createdAt,
+    ),
+  ],
+);
+
 export const accounts = pgTable(
   "accounts",
   {
