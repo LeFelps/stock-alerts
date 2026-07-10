@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import JobsPage from "./dashboard/jobs/page";
 import SignalsPage from "./dashboard/signals/page";
 import SettingsPage from "./dashboard/settings/page";
 import TickerPage from "./dashboard/tickers/[symbol]/page";
@@ -9,12 +10,14 @@ import Home from "./page";
 
 const authMock = vi.hoisted(() => vi.fn());
 const createDrizzleIndicatorSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
+const createDrizzleJobRunRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzlePriceSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzleSignalRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzleWatchlistRepositoryMock = vi.hoisted(() => vi.fn());
 const findWatchlistItemBySymbolMock = vi.hoisted(() => vi.fn());
 const listLatestMarketDataDatesForSymbolsMock = vi.hoisted(() => vi.fn());
 const listIndicatorSnapshotsForSymbolMock = vi.hoisted(() => vi.fn());
+const listRecentJobRunsMock = vi.hoisted(() => vi.fn());
 const latestIndicatorsBySymbolMock = vi.hoisted(() => vi.fn());
 const listPriceSnapshotsForSymbolMock = vi.hoisted(() => vi.fn());
 const listSignalsForProfileMock = vi.hoisted(() => vi.fn());
@@ -43,6 +46,14 @@ vi.mock("@/features/profiles/server/current-profile", () => ({
 
 vi.mock("@/features/market-data/application/refresh-market-data", () => ({
   listLatestMarketDataDatesForSymbols: listLatestMarketDataDatesForSymbolsMock,
+}));
+
+vi.mock("@/features/jobs/application/manage-job-runs", () => ({
+  listRecentJobRuns: listRecentJobRunsMock,
+}));
+
+vi.mock("@/features/jobs/infrastructure/drizzle-job-run-repository", () => ({
+  createDrizzleJobRunRepository: createDrizzleJobRunRepositoryMock,
 }));
 
 vi.mock(
@@ -204,6 +215,9 @@ describe("DashboardPage", () => {
       "href",
       "/dashboard/signals",
     );
+    expect(
+      screen.getAllByRole("link", { name: /Execuções/ })[0],
+    ).toHaveAttribute("href", "/dashboard/jobs");
     expect(
       screen.getAllByRole("link", { name: /Configurações/ })[0],
     ).toHaveAttribute("href", "/dashboard/settings");
@@ -449,6 +463,84 @@ describe("SignalsPage", () => {
 
     await expect(SignalsPage()).rejects.toThrow("NEXT_REDIRECT:/");
     expect(listSignalsForProfileMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("JobsPage", () => {
+  beforeEach(() => {
+    createDrizzleJobRunRepositoryMock.mockReset();
+    createDrizzleJobRunRepositoryMock.mockReturnValue({
+      type: "job-run-repository",
+    });
+    listRecentJobRunsMock.mockReset();
+    listRecentJobRunsMock.mockResolvedValue([]);
+    redirectMock.mockClear();
+    requireCurrentProfileMock.mockReset();
+  });
+
+  it("renders recent scheduled job runs", async () => {
+    requireCurrentProfileMock.mockResolvedValue({
+      email: "user@example.com",
+      profile: createProfile({ emailAlertsEnabled: true }),
+    });
+    listRecentJobRunsMock.mockResolvedValue([
+      {
+        createdAt: new Date("2026-01-02T12:00:00.000Z"),
+        durationMs: 1250,
+        error: null,
+        finishedAt: new Date("2026-01-02T12:00:01.250Z"),
+        id: "job-run-1",
+        jobName: "CHECK_ALERTS",
+        startedAt: new Date("2026-01-02T12:00:00.000Z"),
+        status: "SUCCESS",
+        summary: {
+          createdSignals: 2,
+          enabledTargets: 3,
+          failedEmails: 0,
+          refreshedSymbols: 1,
+          sentEmails: 1,
+          skippedEmails: 1,
+          uniqueSymbols: 1,
+        },
+        updatedAt: new Date("2026-01-02T12:00:01.250Z"),
+      },
+    ]);
+
+    render(await JobsPage());
+
+    expect(
+      screen.getByRole("heading", { name: "Execuções" }),
+    ).toBeInTheDocument();
+    expect(listRecentJobRunsMock).toHaveBeenCalledWith(
+      { limit: 20 },
+      { jobRunRepository: { type: "job-run-repository" } },
+    );
+    expect(screen.getByText("Sucesso")).toBeInTheDocument();
+    expect(screen.getByText("1/1")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 enviados · 1 ignorados · 0 falharam"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders an empty state for profiles without job runs", async () => {
+    requireCurrentProfileMock.mockResolvedValue({
+      email: "user@example.com",
+      profile: createProfile({ emailAlertsEnabled: true }),
+    });
+
+    render(await JobsPage());
+
+    expect(
+      screen.getByText("Nenhuma execução registrada."),
+    ).toBeInTheDocument();
+  });
+
+  it("redirects signed-out users to the sign-in page", async () => {
+    requireCurrentProfileMock.mockRejectedValue(new Error("NEXT_REDIRECT:/"));
+
+    await expect(JobsPage()).rejects.toThrow("NEXT_REDIRECT:/");
+    expect(listRecentJobRunsMock).not.toHaveBeenCalled();
   });
 });
 

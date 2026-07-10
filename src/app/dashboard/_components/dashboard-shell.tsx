@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   Bell,
+  Clock3,
   LineChart,
   LogOut,
   Menu,
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-export type DashboardSection = "overview" | "settings" | "signals";
+export type DashboardSection = "jobs" | "overview" | "settings" | "signals";
 
 type DashboardNavItem = {
   label: string;
@@ -41,6 +42,12 @@ const navItems: DashboardNavItem[] = [
     icon: Bell,
     section: "signals",
     href: "/dashboard/signals",
+  },
+  {
+    label: "Execuções",
+    icon: Clock3,
+    section: "jobs",
+    href: "/dashboard/jobs",
   },
   {
     label: "Configurações",

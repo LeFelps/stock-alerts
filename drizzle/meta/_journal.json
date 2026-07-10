@@ -64,6 +64,13 @@
       "when": 1783645910142,
       "tag": "0008_equal_lockjaw",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1783648337330,
+      "tag": "0009_petite_doomsday",
+      "breakpoints": true
     }
   ]
 }

@@ -84,6 +84,14 @@ ALERT_EMAIL_FROM=
 `ALERT_EMAIL_FROM` must be an SES-verified sender address or identity. The AWS
 credentials must be allowed to call `ses:SendEmail` in `AWS_REGION`.
 
+The scheduled alert check route is available at
+`/api/cron/check-alerts`. Set `CRON_SECRET` in production so Vercel includes it
+as `Authorization: Bearer <CRON_SECRET>` when invoking the route.
+
+```bash
+CRON_SECRET=
+```
+
 Keep local values in `.env.local`; `.env*` files are ignored by git. Run
 `pnpm db:migrate` against a reachable Postgres `DATABASE_URL` before using auth
 locally.
