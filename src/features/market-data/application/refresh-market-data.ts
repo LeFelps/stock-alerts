@@ -1,6 +1,11 @@
 import type { ProfileId } from "@/features/profiles/domain/profile";
 import type { WatchlistRepository } from "@/features/watchlist/application/ports";
 import type { WatchlistItemId } from "@/features/watchlist/domain/watchlist-item";
+import { deliverBuySignalAlerts } from "@/features/alerts/application/deliver-buy-signal-alerts";
+import type {
+  AlertEmailDeliveryRepository,
+  EmailDeliveryProvider,
+} from "@/features/alerts/application/ports";
 import { calculateIndicatorSnapshotsFromPrices } from "@/features/indicators/application/calculate-indicators";
 import type { IndicatorSnapshotRepository } from "@/features/indicators/application/ports";
 import { detectBuySignalsForProfile } from "@/features/signals/application/detect-buy-signals";
@@ -10,6 +15,8 @@ import { err, ok, type Result } from "./result";
 import type { MarketDataProvider, PriceSnapshotRepository } from "./ports";
 
 type MarketDataDependencies = {
+  alertEmailDeliveryRepository: AlertEmailDeliveryRepository;
+  emailDeliveryProvider: EmailDeliveryProvider;
   indicatorSnapshotRepository: IndicatorSnapshotRepository;
   marketDataProvider: MarketDataProvider;
   priceSnapshotRepository: PriceSnapshotRepository;
@@ -20,8 +27,15 @@ type MarketDataDependencies = {
 type RefreshMarketDataError = { type: "watchlist_item_not_found" };
 
 export async function refreshMarketDataForWatchlistItem(
-  command: { itemId: WatchlistItemId; profileId: ProfileId },
+  command: {
+    emailAlertsEnabled: boolean;
+    itemId: WatchlistItemId;
+    profileId: ProfileId;
+    recipientEmail: string;
+  },
   {
+    alertEmailDeliveryRepository,
+    emailDeliveryProvider,
     indicatorSnapshotRepository,
     marketDataProvider,
     priceSnapshotRepository,
@@ -31,7 +45,10 @@ export async function refreshMarketDataForWatchlistItem(
 ): Promise<
   Result<{ latestMarketDate: string | null }, RefreshMarketDataError>
 > {
-  const item = await watchlistRepository.findByIdForProfile(command);
+  const item = await watchlistRepository.findByIdForProfile({
+    itemId: command.itemId,
+    profileId: command.profileId,
+  });
 
   if (!item) {
     return err({ type: "watchlist_item_not_found" });
@@ -46,7 +63,18 @@ export async function refreshMarketDataForWatchlistItem(
 
   await priceSnapshotRepository.upsertMany(snapshots);
   await indicatorSnapshotRepository.upsertMany(indicatorSnapshots);
-  await signalRepository.upsertMany(buySignals);
+  const recordedSignals = await signalRepository.upsertMany(buySignals);
+  await deliverBuySignalAlerts(
+    {
+      emailAlertsEnabled: command.emailAlertsEnabled,
+      recipientEmail: command.recipientEmail,
+      signals: recordedSignals,
+    },
+    {
+      alertEmailDeliveryRepository,
+      emailDeliveryProvider,
+    },
+  );
 
   return ok({
     latestMarketDate: latestMarketDateFrom(snapshots),

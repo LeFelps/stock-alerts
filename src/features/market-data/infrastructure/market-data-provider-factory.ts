@@ -3,10 +3,12 @@ import { z } from "zod";
 import type { MarketDataProvider } from "../application/ports";
 import { createBrapiMarketDataProvider } from "./brapi-market-data-provider";
 
+type ProviderEnv = Partial<Record<string, string | undefined>>;
+
 const marketDataProviderSchema = z.enum(["brapi"]).default("brapi");
 
 export function createConfiguredMarketDataProvider(
-  env: NodeJS.ProcessEnv = process.env,
+  env: ProviderEnv = process.env,
 ): MarketDataProvider {
   const providerName = marketDataProviderSchema.parse(env.MARKET_DATA_PROVIDER);
 

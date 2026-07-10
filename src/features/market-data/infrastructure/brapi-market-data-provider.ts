@@ -58,10 +58,7 @@ export function createBrapiMarketDataProvider({
 }: BrapiMarketDataProviderOptions = {}): MarketDataProvider {
   return {
     async fetchDailyPrices(symbol) {
-      const url = new URL(
-        "/api/v2/stocks/historical",
-        "https://brapi.dev",
-      );
+      const url = new URL("/api/v2/stocks/historical", "https://brapi.dev");
       url.searchParams.set("symbols", symbol);
       url.searchParams.set("range", range);
       url.searchParams.set("interval", "1d");

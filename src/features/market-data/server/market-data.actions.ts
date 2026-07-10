@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { createDrizzleAlertEmailDeliveryRepository } from "@/features/alerts/infrastructure/drizzle-alert-email-delivery-repository";
+import { createConfiguredEmailDeliveryProvider } from "@/features/alerts/infrastructure/email-delivery-provider-factory";
 import { createDrizzleIndicatorSnapshotRepository } from "@/features/indicators/infrastructure/drizzle-indicator-snapshot-repository";
 import { createDrizzleSignalRepository } from "@/features/signals/infrastructure/drizzle-signal-repository";
 import { createDrizzleWatchlistRepository } from "@/features/watchlist/infrastructure/drizzle-watchlist-repository";
@@ -23,13 +25,17 @@ export async function refreshWatchlistItemMarketData(
   itemId: string,
   formData?: FormData,
 ) {
-  const { profile } = await requireCurrentProfile();
+  const { email, profile } = await requireCurrentProfile();
   const result = await refreshMarketDataForWatchlistItem(
     {
+      emailAlertsEnabled: profile.emailAlertsEnabled,
       itemId: toWatchlistItemId(itemIdSchema.parse(itemId)),
       profileId: profile.id,
+      recipientEmail: email,
     },
     {
+      alertEmailDeliveryRepository: createDrizzleAlertEmailDeliveryRepository(),
+      emailDeliveryProvider: createConfiguredEmailDeliveryProvider(),
       indicatorSnapshotRepository: createDrizzleIndicatorSnapshotRepository(),
       marketDataProvider: createConfiguredMarketDataProvider(),
       priceSnapshotRepository: createDrizzlePriceSnapshotRepository(),

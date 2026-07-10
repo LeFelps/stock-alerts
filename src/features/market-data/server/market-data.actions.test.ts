@@ -4,6 +4,8 @@ import { toAuthUserId, toProfileId } from "@/features/profiles/domain/profile";
 
 import { refreshWatchlistItemMarketData } from "./market-data.actions";
 
+const createConfiguredEmailDeliveryProviderMock = vi.hoisted(() => vi.fn());
+const createDrizzleAlertEmailDeliveryRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzleIndicatorSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzlePriceSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzleSignalRepositoryMock = vi.hoisted(() => vi.fn());
@@ -21,6 +23,22 @@ const revalidatePathMock = vi.hoisted(() => vi.fn());
 vi.mock("@/features/profiles/server/current-profile", () => ({
   requireCurrentProfile: requireCurrentProfileMock,
 }));
+
+vi.mock(
+  "@/features/alerts/infrastructure/drizzle-alert-email-delivery-repository",
+  () => ({
+    createDrizzleAlertEmailDeliveryRepository:
+      createDrizzleAlertEmailDeliveryRepositoryMock,
+  }),
+);
+
+vi.mock(
+  "@/features/alerts/infrastructure/email-delivery-provider-factory",
+  () => ({
+    createConfiguredEmailDeliveryProvider:
+      createConfiguredEmailDeliveryProviderMock,
+  }),
+);
 
 vi.mock(
   "@/features/indicators/infrastructure/drizzle-indicator-snapshot-repository",
@@ -64,9 +82,17 @@ vi.mock("next/navigation", () => ({
 
 describe("market data actions", () => {
   beforeEach(() => {
+    createConfiguredEmailDeliveryProviderMock.mockReset();
+    createConfiguredEmailDeliveryProviderMock.mockReturnValue({
+      type: "email-delivery-provider",
+    });
     createConfiguredMarketDataProviderMock.mockReset();
     createConfiguredMarketDataProviderMock.mockReturnValue({
       type: "market-data-provider",
+    });
+    createDrizzleAlertEmailDeliveryRepositoryMock.mockReset();
+    createDrizzleAlertEmailDeliveryRepositoryMock.mockReturnValue({
+      type: "alert-email-delivery-repository",
     });
     createDrizzleIndicatorSnapshotRepositoryMock.mockReset();
     createDrizzleIndicatorSnapshotRepositoryMock.mockReturnValue({
@@ -108,8 +134,17 @@ describe("market data actions", () => {
     await refreshWatchlistItemMarketData("item-1");
 
     expect(refreshMarketDataForWatchlistItemMock).toHaveBeenCalledWith(
-      { itemId: "item-1", profileId: toProfileId("profile-1") },
       {
+        emailAlertsEnabled: true,
+        itemId: "item-1",
+        profileId: toProfileId("profile-1"),
+        recipientEmail: "user@example.com",
+      },
+      {
+        alertEmailDeliveryRepository: {
+          type: "alert-email-delivery-repository",
+        },
+        emailDeliveryProvider: { type: "email-delivery-provider" },
         indicatorSnapshotRepository: { type: "indicator-snapshot-repository" },
         marketDataProvider: { type: "market-data-provider" },
         priceSnapshotRepository: { type: "price-snapshot-repository" },

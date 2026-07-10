@@ -69,6 +69,21 @@ MARKET_DATA_PROVIDER=brapi
 BRAPI_API_TOKEN=
 ```
 
+BUY signal email delivery uses Amazon SES. Delivery attempts are recorded per
+signal and recipient email, including skipped sends when a Perfil has email
+alerts disabled.
+
+```bash
+EMAIL_PROVIDER=ses
+AWS_REGION=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+ALERT_EMAIL_FROM=
+```
+
+`ALERT_EMAIL_FROM` must be an SES-verified sender address or identity. The AWS
+credentials must be allowed to call `ses:SendEmail` in `AWS_REGION`.
+
 Keep local values in `.env.local`; `.env*` files are ignored by git. Run
 `pnpm db:migrate` against a reachable Postgres `DATABASE_URL` before using auth
 locally.

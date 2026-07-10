@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { AlertEmailDeliveryRepository } from "@/features/alerts/application/ports";
+import { toAlertEmailDeliveryId } from "@/features/alerts/domain/email-delivery";
 import type { IndicatorSnapshotRepository } from "@/features/indicators/application/ports";
 import { toProfileId } from "@/features/profiles/domain/profile";
 import type { SignalRepository } from "@/features/signals/application/ports";
+import { toSignalId, type Signal } from "@/features/signals/domain/signal";
 import type { WatchlistRepository } from "@/features/watchlist/application/ports";
 import {
   toWatchlistItemId,
@@ -22,16 +25,36 @@ describe("market data refresh use cases", () => {
     const priceSnapshotRepository = createPriceSnapshotRepository();
     const indicatorSnapshotRepository = createIndicatorSnapshotRepository();
     const signalRepository = createSignalRepository();
+    const alertEmailDeliveryRepository = createAlertEmailDeliveryRepository();
+    const emailDeliveryProvider = createEmailDeliveryProvider();
     const item = createWatchlistItem();
     const snapshots = Array.from({ length: 43 }, (_, index) =>
       createSnapshot(dateFromDayOffset(index), index < 42 ? 100 : 120),
     );
+    const recordedSignal = createSignal();
     vi.mocked(watchlistRepository.findByIdForProfile).mockResolvedValue(item);
     vi.mocked(marketDataProvider.fetchDailyPrices).mockResolvedValue(snapshots);
+    vi.mocked(signalRepository.upsertMany).mockResolvedValue([recordedSignal]);
+    vi.mocked(alertEmailDeliveryRepository.reserve).mockResolvedValue(
+      createDelivery(recordedSignal),
+    );
+    vi.mocked(emailDeliveryProvider.sendBuySignalAlert).mockResolvedValue({
+      providerMessageId: "ses-message-1",
+    });
+    vi.mocked(alertEmailDeliveryRepository.markSent).mockResolvedValue(
+      createDelivery(recordedSignal, { status: "SENT" }),
+    );
 
     const result = await refreshMarketDataForWatchlistItem(
-      { itemId: item.id, profileId: item.profileId },
       {
+        emailAlertsEnabled: true,
+        itemId: item.id,
+        profileId: item.profileId,
+        recipientEmail: "user@example.com",
+      },
+      {
+        alertEmailDeliveryRepository,
+        emailDeliveryProvider,
         indicatorSnapshotRepository,
         marketDataProvider,
         priceSnapshotRepository,
@@ -70,6 +93,10 @@ describe("market data refresh use cases", () => {
         }),
       ]),
     );
+    expect(emailDeliveryProvider.sendBuySignalAlert).toHaveBeenCalledWith({
+      recipientEmail: "user@example.com",
+      signal: recordedSignal,
+    });
   });
 
   it("does not fetch provider data when the watchlist item is outside scope", async () => {
@@ -78,14 +105,20 @@ describe("market data refresh use cases", () => {
     const priceSnapshotRepository = createPriceSnapshotRepository();
     const indicatorSnapshotRepository = createIndicatorSnapshotRepository();
     const signalRepository = createSignalRepository();
+    const alertEmailDeliveryRepository = createAlertEmailDeliveryRepository();
+    const emailDeliveryProvider = createEmailDeliveryProvider();
     vi.mocked(watchlistRepository.findByIdForProfile).mockResolvedValue(null);
 
     const result = await refreshMarketDataForWatchlistItem(
       {
+        emailAlertsEnabled: true,
         itemId: toWatchlistItemId("item-1"),
         profileId: toProfileId("profile-1"),
+        recipientEmail: "user@example.com",
       },
       {
+        alertEmailDeliveryRepository,
+        emailDeliveryProvider,
         indicatorSnapshotRepository,
         marketDataProvider,
         priceSnapshotRepository,
@@ -102,6 +135,7 @@ describe("market data refresh use cases", () => {
     expect(priceSnapshotRepository.upsertMany).not.toHaveBeenCalled();
     expect(indicatorSnapshotRepository.upsertMany).not.toHaveBeenCalled();
     expect(signalRepository.upsertMany).not.toHaveBeenCalled();
+    expect(emailDeliveryProvider.sendBuySignalAlert).not.toHaveBeenCalled();
   });
 
   it("loads latest market dates for unique symbols", async () => {
@@ -144,6 +178,7 @@ function createMarketDataProvider(): MarketDataProvider {
 function createPriceSnapshotRepository(): PriceSnapshotRepository {
   return {
     latestMarketDatesBySymbol: vi.fn(),
+    listForSymbol: vi.fn(),
     upsertMany: vi.fn(),
   };
 }
@@ -160,6 +195,22 @@ function createSignalRepository(): SignalRepository {
   return {
     listForProfile: vi.fn(),
     upsertMany: vi.fn(),
+  };
+}
+
+function createAlertEmailDeliveryRepository(): AlertEmailDeliveryRepository {
+  return {
+    createSkipped: vi.fn(),
+    markFailed: vi.fn(),
+    markSent: vi.fn(),
+    reserve: vi.fn(),
+  };
+}
+
+function createEmailDeliveryProvider() {
+  return {
+    name: "ses" as const,
+    sendBuySignalAlert: vi.fn(),
   };
 }
 
@@ -194,5 +245,36 @@ function createSnapshot(marketDate: string, close = 10) {
     source: "brapi" as const,
     symbol: "PETR4",
     volume: 1000,
+  };
+}
+
+function createSignal(): Signal {
+  return {
+    createdAt: new Date("2026-01-03T12:00:00.000Z"),
+    id: toSignalId("signal-1"),
+    marketDate: "2026-02-12",
+    profileId: toProfileId("profile-1"),
+    reason: "EMA6_CROSSED_ABOVE_EMA42",
+    signalType: "BUY",
+    symbol: "PETR4",
+  };
+}
+
+function createDelivery(
+  signal: Signal,
+  fields: { status?: "PENDING" | "SENT" } = {},
+) {
+  return {
+    createdAt: new Date("2026-01-03T12:00:00.000Z"),
+    id: toAlertEmailDeliveryId("delivery-1"),
+    provider: "ses" as const,
+    providerError: null,
+    providerMessageId: null,
+    recipientEmail: "user@example.com",
+    sentAt: null,
+    signalId: signal.id,
+    skippedReason: null,
+    status: fields.status ?? "PENDING",
+    updatedAt: new Date("2026-01-03T12:00:00.000Z"),
   };
 }
