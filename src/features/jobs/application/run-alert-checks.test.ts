@@ -334,7 +334,12 @@ describe("runAlertChecks", () => {
 
     const result = await runAlertChecks({}, deps);
 
-    expect(result.ok).toBe(false);
+    expect(result).toEqual(
+      expect.objectContaining({
+        error: "PETR4: email: SES unavailable",
+        ok: false,
+      }),
+    );
     expect(deps.emailDeliveryProvider.sendBuySignalAlert).toHaveBeenCalledTimes(
       2,
     );
