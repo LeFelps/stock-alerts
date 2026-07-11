@@ -142,7 +142,7 @@ export async function runAlertChecks(
               if (outcome.type === "failed") {
                 summary.failedEmails += 1;
                 errors.push(
-                  `${symbol}/${target.profileId}: email: ${outcome.delivery.providerError ?? "Unknown delivery failure"}`,
+                  `${symbol}: email: ${outcome.delivery.providerError ?? "Unknown delivery failure"}`,
                 );
               }
             }
@@ -154,7 +154,7 @@ export async function runAlertChecks(
             });
           } catch (error) {
             summary.failedTargets += 1;
-            errors.push(`${symbol}/${target.profileId}: ${formatError(error)}`);
+            errors.push(`${symbol}: target: ${formatError(error)}`);
           }
         }
       } catch (error) {
