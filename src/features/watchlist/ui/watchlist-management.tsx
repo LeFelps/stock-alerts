@@ -10,7 +10,7 @@ import {
   Save,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -217,6 +217,8 @@ function ObservationHoverCard({
   notes: string | null;
   symbol: string;
 }) {
+  const descriptionId = useId();
+
   if (!notes) {
     return (
       <Button
@@ -233,28 +235,36 @@ function ObservationHoverCard({
   }
 
   return (
-    <HoverCard closeDelay={100} openDelay={200}>
-      <HoverCardTrigger asChild>
-        <Button
-          aria-label={`Ver observações de ${symbol}`}
-          className="text-muted-foreground"
-          size="icon-sm"
-          type="button"
-          variant="ghost"
+    <>
+      <span className="sr-only" id={descriptionId}>
+        {notes}
+      </span>
+      <HoverCard closeDelay={100} openDelay={200}>
+        <HoverCardTrigger asChild>
+          <Button
+            aria-describedby={descriptionId}
+            aria-label={`Ver observações de ${symbol}`}
+            className="text-muted-foreground"
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+          >
+            <MessageSquareText aria-hidden="true" className="size-4" />
+          </Button>
+        </HoverCardTrigger>
+        <HoverCardContent
+          align="start"
+          collisionPadding={16}
+          role="tooltip"
+          side="top"
         >
-          <MessageSquareText aria-hidden="true" className="size-4" />
-        </Button>
-      </HoverCardTrigger>
-      <HoverCardContent
-        align="start"
-        collisionPadding={16}
-        role="tooltip"
-        side="top"
-      >
-        <p className="text-xs font-medium text-muted-foreground">Observação</p>
-        <p className="whitespace-pre-wrap pt-2 text-sm leading-5">{notes}</p>
-      </HoverCardContent>
-    </HoverCard>
+          <p className="text-xs font-medium text-muted-foreground">
+            Observação
+          </p>
+          <p className="whitespace-pre-wrap pt-2 text-sm leading-5">{notes}</p>
+        </HoverCardContent>
+      </HoverCard>
+    </>
   );
 }
 
