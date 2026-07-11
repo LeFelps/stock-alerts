@@ -85,8 +85,10 @@ ALERT_EMAIL_FROM=
 credentials must be allowed to call `ses:SendEmail` in `AWS_REGION`.
 
 The scheduled alert check route is available at
-`/api/cron/check-alerts`. Set `CRON_SECRET` in production so Vercel includes it
-as `Authorization: Bearer <CRON_SECRET>` when invoking the route.
+`/api/cron/check-alerts`. `CRON_SECRET` is required in every environment that
+invokes the route. Vercel includes it as
+`Authorization: Bearer <CRON_SECRET>` when invoking the route. Requests are
+rejected when the secret is missing or does not match.
 
 ```bash
 CRON_SECRET=
