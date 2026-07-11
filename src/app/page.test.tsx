@@ -249,11 +249,17 @@ describe("DashboardPage", () => {
     });
 
     render(await DashboardPage());
-    fireEvent.click(screen.getByRole("button", { name: "Abrir navegação" }));
+    const toggle = screen.getByRole("button", { name: "Abrir navegação" });
+    const toggleIcon = toggle.querySelector("svg");
+
+    expect(toggleIcon).not.toHaveClass("transition-transform");
+    fireEvent.click(toggle);
 
     const drawer = screen.getByRole("dialog");
-    expect(drawer).toHaveClass("transition-transform");
+    expect(drawer).toHaveClass("transition-[transform,opacity]");
     expect(drawer).toHaveClass("motion-reduce:transition-none");
+    expect(drawer).toHaveClass("data-[state=open]:opacity-100");
+    expect(drawer).toHaveClass("data-[state=closed]:opacity-0");
     expect(drawer).toHaveClass("data-[state=open]:translate-x-0");
     expect(drawer).toHaveClass("data-[state=closed]:-translate-x-full");
   });
@@ -659,7 +665,12 @@ describe("SettingsPage", () => {
 
     expect(screen.getByText("PETR4")).toBeInTheDocument();
     expect(screen.getByText("Petrobras")).toBeInTheDocument();
-    expect(screen.getByText("Sem observações")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Sem observações de PETR4" }),
+    ).toBeDisabled();
+    expect(
+      screen.queryByText("Nenhuma observação cadastrada."),
+    ).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("PETR4")).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Atualizar/ }),
@@ -672,6 +683,41 @@ describe("SettingsPage", () => {
     expect(
       screen.getByRole("button", { name: "Salvar alterações" }),
     ).toBeInTheDocument();
+  });
+
+  it("renders observations in a portalled hover card", async () => {
+    requireCurrentProfileMock.mockResolvedValue({
+      email: "user@example.com",
+      profile: createProfile({ emailAlertsEnabled: false }),
+    });
+    listWatchlistItemsForProfileMock.mockResolvedValue([
+      {
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        displayName: "Petrobras",
+        enabled: true,
+        id: "item-1",
+        notes: "Acompanhar resultados trimestrais",
+        profileId: "profile-1",
+        symbol: "PETR4",
+        updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    ]);
+
+    render(await SettingsPage());
+
+    const trigger = screen.getByRole("button", {
+      name: "Ver observações de PETR4",
+    });
+    const tableContainer = trigger.closest('[data-slot="table-container"]');
+
+    fireEvent.pointerEnter(trigger, { pointerType: "mouse" });
+
+    const hoverCard = await screen.findByRole("tooltip");
+    expect(screen.getByText("Observação")).toBeInTheDocument();
+    expect(
+      screen.getByText("Acompanhar resultados trimestrais"),
+    ).toBeInTheDocument();
+    expect(tableContainer).not.toContainElement(hoverCard);
   });
 
   it("redirects signed-out users to the sign-in page", async () => {

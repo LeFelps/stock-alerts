@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  MessageSquareText,
   Pause,
   Pencil,
   Play,
@@ -23,6 +24,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Table } from "@/components/ui/table";
 import { refreshWatchlistItemMarketData } from "@/features/market-data/server/market-data.actions";
 import { formatHumanDate } from "@/lib/format-date";
@@ -148,8 +154,8 @@ function WatchlistRow({
     <tr>
       <td className="border-b px-3 py-3 font-medium">{item.symbol}</td>
       <td className="border-b px-3 py-3">{item.displayName ?? "Sem nome"}</td>
-      <td className="max-w-72 border-b px-3 py-3 text-muted-foreground">
-        {item.notes ?? "Sem observações"}
+      <td className="border-b px-3 py-3 align-top">
+        <ObservationHoverCard notes={item.notes} symbol={item.symbol} />
       </td>
       <td className="border-b px-3 py-3 align-top">
         <div className="grid gap-1">
@@ -201,6 +207,54 @@ function WatchlistRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+function ObservationHoverCard({
+  notes,
+  symbol,
+}: {
+  notes: string | null;
+  symbol: string;
+}) {
+  if (!notes) {
+    return (
+      <Button
+        aria-label={`Sem observações de ${symbol}`}
+        className="text-muted-foreground"
+        disabled
+        size="icon-sm"
+        type="button"
+        variant="ghost"
+      >
+        <MessageSquareText aria-hidden="true" className="size-4" />
+      </Button>
+    );
+  }
+
+  return (
+    <HoverCard closeDelay={100} openDelay={200}>
+      <HoverCardTrigger asChild>
+        <Button
+          aria-label={`Ver observações de ${symbol}`}
+          className="text-muted-foreground"
+          size="icon-sm"
+          type="button"
+          variant="ghost"
+        >
+          <MessageSquareText aria-hidden="true" className="size-4" />
+        </Button>
+      </HoverCardTrigger>
+      <HoverCardContent
+        align="start"
+        collisionPadding={16}
+        role="tooltip"
+        side="top"
+      >
+        <p className="text-xs font-medium text-muted-foreground">Observação</p>
+        <p className="whitespace-pre-wrap pt-2 text-sm leading-5">{notes}</p>
+      </HoverCardContent>
+    </HoverCard>
   );
 }
 
