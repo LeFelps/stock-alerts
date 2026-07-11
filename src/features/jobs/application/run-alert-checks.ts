@@ -74,51 +74,74 @@ export async function runAlertChecks(
 
     summary.enabledTargets = targets.length;
     summary.uniqueSymbols = targetsBySymbol.size;
+    const symbolErrors: string[] = [];
 
     for (const [symbol, symbolTargets] of targetsBySymbol) {
-      const snapshots = await marketDataProvider.fetchDailyPrices(symbol);
-      const indicatorSnapshots =
-        calculateIndicatorSnapshotsFromPrices(snapshots);
+      try {
+        const snapshots = await marketDataProvider.fetchDailyPrices(symbol);
+        const indicatorSnapshots =
+          calculateIndicatorSnapshotsFromPrices(snapshots);
 
-      await priceSnapshotRepository.upsertMany(snapshots);
-      await indicatorSnapshotRepository.upsertMany(indicatorSnapshots);
-      summary.refreshedSymbols += 1;
+        await priceSnapshotRepository.upsertMany(snapshots);
+        await indicatorSnapshotRepository.upsertMany(indicatorSnapshots);
+        summary.refreshedSymbols += 1;
 
-      for (const target of symbolTargets) {
-        const detectedSignals = detectBuySignalsForProfile({
-          indicatorSnapshots,
-          profileId: target.profileId,
-        });
-        const recordedSignals =
-          await signalRepository.upsertMany(detectedSignals);
-        summary.createdSignals += recordedSignals.length;
+        for (const target of symbolTargets) {
+          const detectedSignals = detectBuySignalsForProfile({
+            indicatorSnapshots,
+            profileId: target.profileId,
+          });
+          const recordedSignals =
+            await signalRepository.upsertMany(detectedSignals);
+          summary.createdSignals += recordedSignals.length;
 
-        const deliveryOutcomes = await deliverBuySignalAlerts(
-          {
-            emailAlertsEnabled: target.emailAlertsEnabled,
-            recipientEmail: target.recipientEmail,
-            signals: recordedSignals,
-          },
-          {
-            alertEmailDeliveryRepository,
-            emailDeliveryProvider,
-          },
-        );
+          const deliveryOutcomes = await deliverBuySignalAlerts(
+            {
+              emailAlertsEnabled: target.emailAlertsEnabled,
+              recipientEmail: target.recipientEmail,
+              signals: recordedSignals,
+            },
+            {
+              alertEmailDeliveryRepository,
+              emailDeliveryProvider,
+            },
+          );
 
-        for (const outcome of deliveryOutcomes) {
-          if (outcome.type === "sent") {
-            summary.sentEmails += 1;
-          }
+          for (const outcome of deliveryOutcomes) {
+            if (outcome.type === "sent") {
+              summary.sentEmails += 1;
+            }
 
-          if (outcome.type === "skipped") {
-            summary.skippedEmails += 1;
-          }
+            if (outcome.type === "skipped") {
+              summary.skippedEmails += 1;
+            }
 
-          if (outcome.type === "failed") {
-            summary.failedEmails += 1;
+            if (outcome.type === "failed") {
+              summary.failedEmails += 1;
+            }
           }
         }
+      } catch (error) {
+        symbolErrors.push(`${symbol}: ${formatError(error)}`);
       }
+    }
+
+    if (symbolErrors.length > 0) {
+      const message = symbolErrors.join("; ");
+
+      return {
+        error: message,
+        jobRun: await finishJobRun({
+          error: message,
+          jobRunRepository,
+          jobRun,
+          now,
+          startedAt,
+          status: "FAILED",
+          summary,
+        }),
+        ok: false,
+      };
     }
 
     return {

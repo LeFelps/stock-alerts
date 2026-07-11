@@ -134,13 +134,16 @@ describe("runAlertChecks", () => {
     );
   });
 
-  it("records a failed job run when refresh fails", async () => {
+  it("continues with later symbols and records a failed run when one symbol fails", async () => {
     const deps = createDependencies();
     const startedRun = createJobRun();
     const failedRun = createJobRun({
-      error: "Provider unavailable",
+      error: "PETR4: Provider unavailable",
       status: "FAILED",
     });
+    const snapshots = Array.from({ length: 43 }, (_, index) =>
+      createSnapshot(dateFromDayOffset(index), index < 42 ? 100 : 120, "VALE3"),
+    );
     vi.mocked(deps.jobRunRepository.start).mockResolvedValue(startedRun);
     vi.mocked(deps.jobRunRepository.finish).mockResolvedValue(failedRun);
     vi.mocked(
@@ -152,26 +155,41 @@ describe("runAlertChecks", () => {
         recipientEmail: "enabled@example.com",
         symbol: "PETR4",
       },
+      {
+        emailAlertsEnabled: true,
+        profileId: toProfileId("profile-2"),
+        recipientEmail: "second@example.com",
+        symbol: "VALE3",
+      },
     ]);
-    vi.mocked(deps.marketDataProvider.fetchDailyPrices).mockRejectedValue(
-      new Error("Provider unavailable"),
-    );
+    vi.mocked(deps.marketDataProvider.fetchDailyPrices)
+      .mockRejectedValueOnce(new Error("Provider unavailable"))
+      .mockResolvedValueOnce(snapshots);
+    vi.mocked(deps.signalRepository.upsertMany).mockResolvedValue([]);
 
     const result = await runAlertChecks({}, deps);
 
     expect(result).toEqual({
-      error: "Provider unavailable",
+      error: "PETR4: Provider unavailable",
       jobRun: failedRun,
       ok: false,
     });
+    expect(deps.marketDataProvider.fetchDailyPrices).toHaveBeenCalledTimes(2);
+    expect(deps.marketDataProvider.fetchDailyPrices).toHaveBeenNthCalledWith(
+      2,
+      "VALE3",
+    );
+    expect(deps.priceSnapshotRepository.upsertMany).toHaveBeenCalledWith(
+      snapshots,
+    );
     expect(deps.jobRunRepository.finish).toHaveBeenCalledWith(
       expect.objectContaining({
-        error: "Provider unavailable",
+        error: "PETR4: Provider unavailable",
         status: "FAILED",
         summary: expect.objectContaining({
-          enabledTargets: 1,
-          refreshedSymbols: 0,
-          uniqueSymbols: 1,
+          enabledTargets: 2,
+          refreshedSymbols: 1,
+          uniqueSymbols: 2,
         }),
       }),
     );
@@ -278,7 +296,7 @@ function dateFromDayOffset(dayOffset: number) {
   return new Date(Date.UTC(2026, 0, 1 + dayOffset)).toISOString().slice(0, 10);
 }
 
-function createSnapshot(marketDate: string, close = 10) {
+function createSnapshot(marketDate: string, close = 10, symbol = "PETR4") {
   return {
     adjustedClose: close,
     close,
@@ -290,7 +308,7 @@ function createSnapshot(marketDate: string, close = 10) {
     open: close - 0.5,
     rawPayload: {},
     source: "brapi" as const,
-    symbol: "PETR4",
+    symbol,
     volume: 1000,
   };
 }

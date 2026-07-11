@@ -24,7 +24,7 @@ function isAuthorizedCronRequest(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret) {
-    return true;
+    return false;
   }
 
   return request.headers.get("authorization") === `Bearer ${cronSecret}`;

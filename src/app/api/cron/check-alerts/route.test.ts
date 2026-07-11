@@ -18,24 +18,16 @@ describe("/api/cron/check-alerts", () => {
     runCheckAlertsJobMock.mockReset();
   });
 
-  it("runs without an Authorization header when CRON_SECRET is not configured", async () => {
+  it("rejects requests when CRON_SECRET is not configured", async () => {
     delete process.env.CRON_SECRET;
-    runCheckAlertsJobMock.mockResolvedValue({
-      jobRun: createJobRun("SUCCESS"),
-      ok: true,
-    });
 
     const response = await GET(
       new Request("https://example.com/api/cron/check-alerts"),
     );
 
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      jobRunId: "job-run-1",
-      status: "SUCCESS",
-      summary: expect.any(Object),
-    });
-    expect(runCheckAlertsJobMock).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(runCheckAlertsJobMock).not.toHaveBeenCalled();
   });
 
   it("rejects requests without the expected bearer token when CRON_SECRET is configured", async () => {
@@ -70,7 +62,7 @@ describe("/api/cron/check-alerts", () => {
   });
 
   it("returns a failed response when the job records a failure", async () => {
-    delete process.env.CRON_SECRET;
+    process.env.CRON_SECRET = "secret-value";
     runCheckAlertsJobMock.mockResolvedValue({
       error: "Provider unavailable",
       jobRun: createJobRun("FAILED"),
@@ -78,7 +70,9 @@ describe("/api/cron/check-alerts", () => {
     });
 
     const response = await GET(
-      new Request("https://example.com/api/cron/check-alerts"),
+      new Request("https://example.com/api/cron/check-alerts", {
+        headers: { authorization: "Bearer secret-value" },
+      }),
     );
 
     expect(response.status).toBe(500);
