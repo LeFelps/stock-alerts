@@ -2,6 +2,7 @@ import { ArrowLeft, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { Table } from "@/components/ui/table";
 import type { IndicatorSnapshot } from "@/features/indicators/domain/indicator-snapshot";
 import { refreshWatchlistItemMarketData } from "@/features/market-data/server/market-data.actions";
 import type { PriceSnapshot } from "@/features/market-data/domain/price-snapshot";
@@ -105,44 +106,42 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function CompactPriceTable({ snapshots }: { snapshots: PriceSnapshot[] }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[44rem] border-separate border-spacing-0 text-left text-sm">
-        <thead className="text-muted-foreground">
-          <tr>
-            <th className="border-b px-3 py-3 font-medium">Pregão</th>
-            <th className="border-b px-3 py-3 font-medium">Abertura</th>
-            <th className="border-b px-3 py-3 font-medium">Máxima</th>
-            <th className="border-b px-3 py-3 font-medium">Mínima</th>
-            <th className="border-b px-3 py-3 font-medium">Fechamento</th>
-            <th className="border-b px-3 py-3 font-medium">Volume</th>
+    <Table>
+      <thead className="text-muted-foreground">
+        <tr>
+          <th className="border-b px-3 py-3 font-medium">Pregão</th>
+          <th className="border-b px-3 py-3 font-medium">Abertura</th>
+          <th className="border-b px-3 py-3 font-medium">Máxima</th>
+          <th className="border-b px-3 py-3 font-medium">Mínima</th>
+          <th className="border-b px-3 py-3 font-medium">Fechamento</th>
+          <th className="border-b px-3 py-3 font-medium">Volume</th>
+        </tr>
+      </thead>
+      <tbody>
+        {snapshots.map((snapshot) => (
+          <tr key={`${snapshot.source}-${snapshot.marketDate}`}>
+            <td className="border-b px-3 py-3">
+              {formatMarketDate(snapshot.marketDate)}
+            </td>
+            <td className="border-b px-3 py-3">
+              {formatCurrency(snapshot.open)}
+            </td>
+            <td className="border-b px-3 py-3">
+              {formatCurrency(snapshot.high)}
+            </td>
+            <td className="border-b px-3 py-3">
+              {formatCurrency(snapshot.low)}
+            </td>
+            <td className="border-b px-3 py-3">
+              {formatCurrency(snapshot.close)}
+            </td>
+            <td className="border-b px-3 py-3">
+              {formatInteger(snapshot.volume)}
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {snapshots.map((snapshot) => (
-            <tr key={`${snapshot.source}-${snapshot.marketDate}`}>
-              <td className="border-b px-3 py-3">
-                {formatMarketDate(snapshot.marketDate)}
-              </td>
-              <td className="border-b px-3 py-3">
-                {formatCurrency(snapshot.open)}
-              </td>
-              <td className="border-b px-3 py-3">
-                {formatCurrency(snapshot.high)}
-              </td>
-              <td className="border-b px-3 py-3">
-                {formatCurrency(snapshot.low)}
-              </td>
-              <td className="border-b px-3 py-3">
-                {formatCurrency(snapshot.close)}
-              </td>
-              <td className="border-b px-3 py-3">
-                {formatInteger(snapshot.volume)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </Table>
   );
 }
 
@@ -156,40 +155,38 @@ function IndicatorTable({ snapshots }: { snapshots: IndicatorSnapshot[] }) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[40rem] border-separate border-spacing-0 text-left text-sm">
-        <thead className="text-muted-foreground">
-          <tr>
-            <th className="border-b px-3 py-3 font-medium">Pregão</th>
-            <th className="border-b px-3 py-3 font-medium">Fechamento</th>
-            <th className="border-b px-3 py-3 font-medium">MME6</th>
-            <th className="border-b px-3 py-3 font-medium">MME13</th>
-            <th className="border-b px-3 py-3 font-medium">MME42</th>
+    <Table>
+      <thead className="text-muted-foreground">
+        <tr>
+          <th className="border-b px-3 py-3 font-medium">Pregão</th>
+          <th className="border-b px-3 py-3 font-medium">Fechamento</th>
+          <th className="border-b px-3 py-3 font-medium">MME6</th>
+          <th className="border-b px-3 py-3 font-medium">MME13</th>
+          <th className="border-b px-3 py-3 font-medium">MME42</th>
+        </tr>
+      </thead>
+      <tbody>
+        {snapshots.map((snapshot) => (
+          <tr key={snapshot.marketDate}>
+            <td className="border-b px-3 py-3">
+              {formatMarketDate(snapshot.marketDate)}
+            </td>
+            <td className="border-b px-3 py-3">
+              {formatCurrency(snapshot.close)}
+            </td>
+            <td className="border-b px-3 py-3">
+              {formatNumber(snapshot.ema6)}
+            </td>
+            <td className="border-b px-3 py-3">
+              {formatNumber(snapshot.ema13)}
+            </td>
+            <td className="border-b px-3 py-3">
+              {formatNumber(snapshot.ema42)}
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {snapshots.map((snapshot) => (
-            <tr key={snapshot.marketDate}>
-              <td className="border-b px-3 py-3">
-                {formatMarketDate(snapshot.marketDate)}
-              </td>
-              <td className="border-b px-3 py-3">
-                {formatCurrency(snapshot.close)}
-              </td>
-              <td className="border-b px-3 py-3">
-                {formatNumber(snapshot.ema6)}
-              </td>
-              <td className="border-b px-3 py-3">
-                {formatNumber(snapshot.ema13)}
-              </td>
-              <td className="border-b px-3 py-3">
-                {formatNumber(snapshot.ema42)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </Table>
   );
 }
 

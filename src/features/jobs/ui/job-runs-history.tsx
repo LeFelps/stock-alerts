@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { Table } from "@/components/ui/table";
 
 import type { JobRun } from "../domain/job-run";
 
@@ -16,56 +17,54 @@ export function JobRunsHistory({ jobRuns }: { jobRuns: JobRun[] }) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[64rem] border-separate border-spacing-0 text-left text-sm">
-        <thead className="text-muted-foreground">
-          <tr>
-            <th className="border-b px-3 py-3 font-medium">Início</th>
-            <th className="border-b px-3 py-3 font-medium">Status</th>
-            <th className="border-b px-3 py-3 font-medium">Duração</th>
-            <th className="border-b px-3 py-3 font-medium">Ativos</th>
-            <th className="border-b px-3 py-3 font-medium">Ignorados</th>
-            <th className="border-b px-3 py-3 font-medium">Sinais</th>
-            <th className="border-b px-3 py-3 font-medium">Emails</th>
-            <th className="border-b px-3 py-3 font-medium">Erro</th>
+    <Table>
+      <thead className="text-muted-foreground">
+        <tr>
+          <th className="border-b px-3 py-3 font-medium">Início</th>
+          <th className="border-b px-3 py-3 font-medium">Status</th>
+          <th className="border-b px-3 py-3 font-medium">Duração</th>
+          <th className="border-b px-3 py-3 font-medium">Ativos</th>
+          <th className="border-b px-3 py-3 font-medium">Ignorados</th>
+          <th className="border-b px-3 py-3 font-medium">Sinais</th>
+          <th className="border-b px-3 py-3 font-medium">Emails</th>
+          <th className="border-b px-3 py-3 font-medium">Erro</th>
+        </tr>
+      </thead>
+      <tbody>
+        {jobRuns.map((jobRun) => (
+          <tr key={jobRun.id}>
+            <td className="border-b px-3 py-3">
+              {formatDateTime(jobRun.startedAt)}
+            </td>
+            <td className="border-b px-3 py-3">
+              <Badge
+                variant={
+                  jobRun.status === "FAILED" ? "destructive" : "secondary"
+                }
+              >
+                {formatStatus(jobRun)}
+              </Badge>
+            </td>
+            <td className="border-b px-3 py-3">
+              {formatDuration(jobRun.durationMs)}
+            </td>
+            <td className="border-b px-3 py-3">
+              {jobRun.summary.refreshedSymbols}/{jobRun.summary.uniqueSymbols}
+            </td>
+            <td className="border-b px-3 py-3">
+              {jobRun.summary.staleTargets}
+            </td>
+            <td className="border-b px-3 py-3">
+              {jobRun.summary.createdSignals}
+            </td>
+            <td className="border-b px-3 py-3">{formatEmails(jobRun)}</td>
+            <td className="max-w-xs truncate border-b px-3 py-3 text-muted-foreground">
+              {jobRun.error ?? "Sem erro"}
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {jobRuns.map((jobRun) => (
-            <tr key={jobRun.id}>
-              <td className="border-b px-3 py-3">
-                {formatDateTime(jobRun.startedAt)}
-              </td>
-              <td className="border-b px-3 py-3">
-                <Badge
-                  variant={
-                    jobRun.status === "FAILED" ? "destructive" : "secondary"
-                  }
-                >
-                  {formatStatus(jobRun)}
-                </Badge>
-              </td>
-              <td className="border-b px-3 py-3">
-                {formatDuration(jobRun.durationMs)}
-              </td>
-              <td className="border-b px-3 py-3">
-                {jobRun.summary.refreshedSymbols}/{jobRun.summary.uniqueSymbols}
-              </td>
-              <td className="border-b px-3 py-3">
-                {jobRun.summary.staleTargets}
-              </td>
-              <td className="border-b px-3 py-3">
-                {jobRun.summary.createdSignals}
-              </td>
-              <td className="border-b px-3 py-3">{formatEmails(jobRun)}</td>
-              <td className="max-w-xs truncate border-b px-3 py-3 text-muted-foreground">
-                {jobRun.error ?? "Sem erro"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </Table>
   );
 }
 

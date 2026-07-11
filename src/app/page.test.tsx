@@ -299,6 +299,15 @@ describe("DashboardPage", () => {
 
     expect(screen.getByText("PETR4")).toBeInTheDocument();
     expect(screen.getByText("Aguardando regra")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "MME6" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "MME13" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "MME42" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Abrir/ })).toHaveAttribute(
       "href",
       "/dashboard/tickers/PETR4",
@@ -307,6 +316,9 @@ describe("DashboardPage", () => {
       screen.queryByRole("button", { name: /Atualizar/ }),
     ).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("PETR4")).not.toBeInTheDocument();
+    expect(screen.getByRole("table").parentElement).toHaveClass(
+      "overflow-x-auto",
+    );
   });
 
   it("redirects signed-out users to the sign-in page", async () => {
@@ -408,6 +420,9 @@ describe("TickerPage", () => {
     );
     expect(screen.getByText("Preços de fechamento")).toBeInTheDocument();
     expect(screen.getByText("Dados do gráfico MME")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "MME6" })).toBeVisible();
+    expect(screen.getByRole("columnheader", { name: "MME13" })).toBeVisible();
+    expect(screen.getByRole("columnheader", { name: "MME42" })).toBeVisible();
     expect(screen.getByText("Snapshots brutos")).toBeInTheDocument();
     expect(screen.getAllByText(/31,10/).length).toBeGreaterThan(1);
   });
