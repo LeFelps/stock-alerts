@@ -568,6 +568,18 @@ describe("JobsPage", () => {
 
 describe("SettingsPage", () => {
   beforeEach(() => {
+    createDrizzlePriceSnapshotRepositoryMock.mockReset();
+    createDrizzlePriceSnapshotRepositoryMock.mockReturnValue({
+      type: "price-snapshot-repository",
+    });
+    createDrizzleWatchlistRepositoryMock.mockReset();
+    createDrizzleWatchlistRepositoryMock.mockReturnValue({
+      type: "watchlist-repository",
+    });
+    listLatestMarketDataDatesForSymbolsMock.mockReset();
+    listLatestMarketDataDatesForSymbolsMock.mockResolvedValue(new Map());
+    listWatchlistItemsForProfileMock.mockReset();
+    listWatchlistItemsForProfileMock.mockResolvedValue([]);
     redirectMock.mockClear();
     requireCurrentProfileMock.mockReset();
   });
