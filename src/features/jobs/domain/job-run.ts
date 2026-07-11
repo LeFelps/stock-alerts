@@ -8,9 +8,12 @@ export type JobRunSummary = {
   createdSignals: number;
   enabledTargets: number;
   failedEmails: number;
+  failedSymbols: number;
+  failedTargets: number;
   refreshedSymbols: number;
   sentEmails: number;
   skippedEmails: number;
+  staleTargets: number;
   uniqueSymbols: number;
 };
 
@@ -32,9 +35,12 @@ export function emptyJobRunSummary(): JobRunSummary {
     createdSignals: 0,
     enabledTargets: 0,
     failedEmails: 0,
+    failedSymbols: 0,
+    failedTargets: 0,
     refreshedSymbols: 0,
     sentEmails: 0,
     skippedEmails: 0,
+    staleTargets: 0,
     uniqueSymbols: 0,
   };
 }

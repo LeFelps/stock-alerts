@@ -19,6 +19,18 @@ export type AlertCheckTargetRepository = {
   listEnabledTargets(): Promise<AlertCheckTarget[]>;
 };
 
+export type AlertCheckCheckpointRepository = {
+  latestProcessedMarketDate(command: {
+    profileId: ProfileId;
+    symbol: string;
+  }): Promise<string | null>;
+  markProcessed(command: {
+    marketDate: string;
+    profileId: ProfileId;
+    symbol: string;
+  }): Promise<void>;
+};
+
 export type StartJobRunCommand = {
   jobName: JobRunName;
   startedAt: Date;

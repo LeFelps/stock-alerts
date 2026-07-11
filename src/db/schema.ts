@@ -205,6 +205,23 @@ export const jobRuns = pgTable(
   ],
 );
 
+export const alertCheckpoints = pgTable(
+  "alert_checkpoints",
+  {
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    symbol: text("symbol").notNull(),
+    lastProcessedMarketDate: date("last_processed_market_date").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (checkpoint) => [
+    primaryKey({ columns: [checkpoint.profileId, checkpoint.symbol] }),
+    index("alert_checkpoints_symbol_index").on(checkpoint.symbol),
+  ],
+);
+
 export const accounts = pgTable(
   "accounts",
   {
