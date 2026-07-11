@@ -94,7 +94,7 @@ export function DashboardShell({
         <div className="grid flex-1 gap-8 py-8 lg:grid-cols-[14rem_1fr]">
           <DesktopSidebarNav activeSection={activeSection} />
 
-          <section className="grid content-start gap-10">
+          <section className="grid min-w-0 content-start gap-10">
             {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
             {children}
           </section>

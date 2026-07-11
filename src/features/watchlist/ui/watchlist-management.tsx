@@ -2,6 +2,7 @@ import { Pause, Play, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Table } from "@/components/ui/table";
 import { refreshWatchlistItemMarketData } from "@/features/market-data/server/market-data.actions";
 
 import type { WatchlistItem } from "../domain/watchlist-item";
@@ -74,29 +75,27 @@ export function WatchlistManagement({
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[64rem] border-separate border-spacing-0 text-left text-sm">
-            <thead className="text-muted-foreground">
-              <tr>
-                <th className="border-b px-3 py-3 font-medium">Código</th>
-                <th className="border-b px-3 py-3 font-medium">Nome</th>
-                <th className="border-b px-3 py-3 font-medium">Observações</th>
-                <th className="border-b px-3 py-3 font-medium">
-                  Dados de mercado
-                </th>
-                <th className="border-b px-3 py-3 font-medium">Status</th>
-                <th className="border-b px-3 py-3 text-right font-medium">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <WatchlistRow item={item} key={item.id} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <thead className="text-muted-foreground">
+            <tr>
+              <th className="border-b px-3 py-3 font-medium">Código</th>
+              <th className="border-b px-3 py-3 font-medium">Nome</th>
+              <th className="border-b px-3 py-3 font-medium">Observações</th>
+              <th className="border-b px-3 py-3 font-medium">
+                Dados de mercado
+              </th>
+              <th className="border-b px-3 py-3 font-medium">Status</th>
+              <th className="border-b px-3 py-3 text-right font-medium">
+                Ações
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <WatchlistRow item={item} key={item.id} />
+            ))}
+          </tbody>
+        </Table>
       )}
     </div>
   );
@@ -197,7 +196,7 @@ function WatchlistRow({ item }: { item: WatchlistManagementItem }) {
           <form action={deleteAction}>
             <Button
               aria-label={`Excluir ${item.symbol}`}
-              size="icon"
+              size="icon-sm"
               title={`Excluir ${item.symbol}`}
               type="submit"
               variant="destructive"

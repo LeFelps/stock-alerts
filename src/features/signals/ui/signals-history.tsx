@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { Table } from "@/components/ui/table";
 
 import type { Signal } from "../domain/signal";
 
@@ -16,40 +17,34 @@ export function SignalsHistory({ signals }: { signals: Signal[] }) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[56rem] border-separate border-spacing-0 text-left text-sm">
-        <thead className="text-muted-foreground">
-          <tr>
-            <th className="border-b px-3 py-3 font-medium">Ativo</th>
-            <th className="border-b px-3 py-3 font-medium">Tipo</th>
-            <th className="border-b px-3 py-3 font-medium">Pregão</th>
-            <th className="border-b px-3 py-3 font-medium">Motivo técnico</th>
-            <th className="border-b px-3 py-3 font-medium">Registrado em</th>
+    <Table>
+      <thead className="text-muted-foreground">
+        <tr>
+          <th className="border-b px-3 py-3 font-medium">Ativo</th>
+          <th className="border-b px-3 py-3 font-medium">Tipo</th>
+          <th className="border-b px-3 py-3 font-medium">Pregão</th>
+          <th className="border-b px-3 py-3 font-medium">Motivo técnico</th>
+          <th className="border-b px-3 py-3 font-medium">Registrado em</th>
+        </tr>
+      </thead>
+      <tbody>
+        {signals.map((signal) => (
+          <tr key={signal.id}>
+            <td className="border-b px-3 py-3 font-medium">{signal.symbol}</td>
+            <td className="border-b px-3 py-3">
+              <Badge variant="secondary">{formatSignalType(signal)}</Badge>
+            </td>
+            <td className="border-b px-3 py-3">
+              {formatMarketDate(signal.marketDate)}
+            </td>
+            <td className="border-b px-3 py-3">{formatSignalReason(signal)}</td>
+            <td className="border-b px-3 py-3">
+              {formatDateTime(signal.createdAt)}
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {signals.map((signal) => (
-            <tr key={signal.id}>
-              <td className="border-b px-3 py-3 font-medium">
-                {signal.symbol}
-              </td>
-              <td className="border-b px-3 py-3">
-                <Badge variant="secondary">{formatSignalType(signal)}</Badge>
-              </td>
-              <td className="border-b px-3 py-3">
-                {formatMarketDate(signal.marketDate)}
-              </td>
-              <td className="border-b px-3 py-3">
-                {formatSignalReason(signal)}
-              </td>
-              <td className="border-b px-3 py-3">
-                {formatDateTime(signal.createdAt)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </Table>
   );
 }
 
