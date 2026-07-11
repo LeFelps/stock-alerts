@@ -7,6 +7,7 @@ import type { IndicatorSnapshot } from "@/features/indicators/domain/indicator-s
 import { refreshWatchlistItemMarketData } from "@/features/market-data/server/market-data.actions";
 import type { PriceSnapshot } from "@/features/market-data/domain/price-snapshot";
 import type { WatchlistItem } from "@/features/watchlist/domain/watchlist-item";
+import { formatHumanDate } from "@/lib/format-date";
 
 export function TickerDetail({
   indicatorSnapshots,
@@ -236,11 +237,5 @@ function formatInteger(value: number | null | undefined) {
 }
 
 function formatMarketDate(marketDate: string | null) {
-  if (!marketDate) {
-    return "Sem dados";
-  }
-
-  const [year, month, day] = marketDate.split("-");
-
-  return `${day}/${month}/${year}`;
+  return marketDate ? formatHumanDate(marketDate) : "Sem dados";
 }

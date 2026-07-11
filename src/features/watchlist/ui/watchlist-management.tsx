@@ -1,9 +1,31 @@
-import { Pause, Play, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
+"use client";
+
+import {
+  Pause,
+  Pencil,
+  Play,
+  Plus,
+  RefreshCw,
+  Save,
+  Trash2,
+} from "lucide-react";
+import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Table } from "@/components/ui/table";
 import { refreshWatchlistItemMarketData } from "@/features/market-data/server/market-data.actions";
+import { formatHumanDate } from "@/lib/format-date";
 
 import type { WatchlistItem } from "../domain/watchlist-item";
 import {
@@ -102,8 +124,6 @@ export function WatchlistManagement({
 }
 
 function WatchlistRow({ item }: { item: WatchlistManagementItem }) {
-  const formId = `watchlist-item-${item.id}`;
-  const updateAction = updateWatchlistItem.bind(null, item.id);
   const refreshAction = refreshWatchlistItemMarketData.bind(null, item.id);
   const toggleAction = setWatchlistItemEnabled.bind(
     null,
@@ -114,55 +134,20 @@ function WatchlistRow({ item }: { item: WatchlistManagementItem }) {
 
   return (
     <tr>
-      <td className="border-b px-3 py-3 align-top">
-        <form action={updateAction} id={formId}>
-          <label className="sr-only" htmlFor={`${formId}-symbol`}>
-            Código
-          </label>
-          <input
-            className={fieldClassName}
-            defaultValue={item.symbol}
-            id={`${formId}-symbol`}
-            maxLength={12}
-            name="symbol"
-            required
-          />
-        </form>
-      </td>
-      <td className="border-b px-3 py-3 align-top">
-        <label className="sr-only" htmlFor={`${formId}-display-name`}>
-          Nome opcional
-        </label>
-        <input
-          className={fieldClassName}
-          defaultValue={item.displayName ?? ""}
-          form={formId}
-          id={`${formId}-display-name`}
-          maxLength={120}
-          name="displayName"
-        />
-      </td>
-      <td className="border-b px-3 py-3 align-top">
-        <label className="sr-only" htmlFor={`${formId}-notes`}>
-          Observações
-        </label>
-        <textarea
-          className={textareaClassName}
-          defaultValue={item.notes ?? ""}
-          form={formId}
-          id={`${formId}-notes`}
-          maxLength={1000}
-          name="notes"
-          rows={1}
-        />
+      <td className="border-b px-3 py-3 font-medium">{item.symbol}</td>
+      <td className="border-b px-3 py-3">{item.displayName ?? "Sem nome"}</td>
+      <td className="max-w-72 border-b px-3 py-3 text-muted-foreground">
+        {item.notes ?? "Sem observações"}
       </td>
       <td className="border-b px-3 py-3 align-top">
         <div className="grid gap-1">
           <span className="text-sm font-medium">
-            {formatMarketDate(item.latestMarketDate)}
+            {item.latestMarketDate
+              ? formatHumanDate(item.latestMarketDate)
+              : "Sem dados"}
           </span>
           <span className="text-xs text-muted-foreground">
-            Último pregão salvo
+            Última atualização
           </span>
         </div>
       </td>
@@ -179,10 +164,7 @@ function WatchlistRow({ item }: { item: WatchlistManagementItem }) {
               Atualizar
             </Button>
           </form>
-          <Button form={formId} size="sm" type="submit" variant="outline">
-            <Save aria-hidden="true" className="size-4" />
-            Salvar
-          </Button>
+          <EditWatchlistItemDialog item={item} />
           <form action={toggleAction}>
             <Button size="sm" type="submit" variant="secondary">
               {item.enabled ? (
@@ -210,12 +192,76 @@ function WatchlistRow({ item }: { item: WatchlistManagementItem }) {
   );
 }
 
-function formatMarketDate(marketDate: string | null) {
-  if (!marketDate) {
-    return "Sem dados";
+function EditWatchlistItemDialog({ item }: { item: WatchlistManagementItem }) {
+  const [open, setOpen] = useState(false);
+  const formId = `watchlist-item-${item.id}`;
+  const updateAction = updateWatchlistItem.bind(null, item.id);
+
+  async function submitUpdate(formData: FormData) {
+    await updateAction(formData);
+    setOpen(false);
   }
 
-  const [year, month, day] = marketDate.split("-");
+  return (
+    <Dialog onOpenChange={setOpen} open={open}>
+      <DialogTrigger asChild>
+        <Button size="sm" type="button" variant="outline">
+          <Pencil aria-hidden="true" className="size-4" />
+          Editar
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Editar {item.symbol}</DialogTitle>
+          <DialogDescription>
+            Atualize os dados deste Ativo na Lista de acompanhamento.
+          </DialogDescription>
+        </DialogHeader>
 
-  return `${day}/${month}/${year}`;
+        <form action={submitUpdate} className="grid gap-4" id={formId}>
+          <label className="grid gap-2 text-sm font-medium">
+            Código
+            <input
+              className={fieldClassName}
+              defaultValue={item.symbol}
+              maxLength={12}
+              name="symbol"
+              required
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            Nome opcional
+            <input
+              className={fieldClassName}
+              defaultValue={item.displayName ?? ""}
+              maxLength={120}
+              name="displayName"
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            Observações
+            <textarea
+              className={textareaClassName}
+              defaultValue={item.notes ?? ""}
+              maxLength={1000}
+              name="notes"
+              rows={4}
+            />
+          </label>
+        </form>
+
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              Cancelar
+            </Button>
+          </DialogClose>
+          <Button form={formId} type="submit">
+            <Save aria-hidden="true" className="size-4" />
+            Salvar alterações
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
