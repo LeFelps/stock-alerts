@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import JobsPage from "./dashboard/jobs/page";
@@ -710,12 +710,16 @@ describe("SettingsPage", () => {
     });
     const tableContainer = trigger.closest('[data-slot="table-container"]');
 
+    expect(trigger).toHaveAccessibleDescription(
+      "Acompanhar resultados trimestrais",
+    );
+
     fireEvent.pointerEnter(trigger, { pointerType: "mouse" });
 
     const hoverCard = await screen.findByRole("tooltip");
-    expect(screen.getByText("Observação")).toBeInTheDocument();
+    expect(within(hoverCard).getByText("Observação")).toBeInTheDocument();
     expect(
-      screen.getByText("Acompanhar resultados trimestrais"),
+      within(hoverCard).getByText("Acompanhar resultados trimestrais"),
     ).toBeInTheDocument();
     expect(tableContainer).not.toContainElement(hoverCard);
   });
