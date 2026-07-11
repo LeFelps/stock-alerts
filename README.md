@@ -98,6 +98,17 @@ Keep local values in `.env.local`; `.env*` files are ignored by git. Run
 `pnpm db:migrate` against a reachable Postgres `DATABASE_URL` before using auth
 locally.
 
+## Automated Checks
+
+Opening or updating a pull request runs the unit and browser test suites in
+GitHub Actions. The workflow provisions PostgreSQL and applies the checked-in
+migrations before running the browser tests. Configure the `Automated tests`
+check as required in the repository's branch rules so failed runs block merges.
+
+Installing dependencies enables the Husky-managed Git hooks. The pre-push hook
+runs `pnpm test`, and `pnpm build` automatically runs `pnpm db:migrate` first.
+Set `DATABASE_URL` to the database that should be migrated before building.
+
 ## Project Conventions
 
 - Application code lives under `src/`.
