@@ -60,7 +60,7 @@ export function TickerDetail({
           value={formatCurrency(latestPrice?.close)}
         />
         <Metric
-          label="Último pregão"
+          label="Última atualização"
           value={formatMarketDate(latestPrice?.marketDate ?? null)}
         />
         <Metric label="Abertura" value={formatCurrency(latestPrice?.open)} />

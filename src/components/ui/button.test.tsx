@@ -32,4 +32,12 @@ describe("Button", () => {
     expect(screen.getByRole("link", { name: "Abrir" })).toHaveClass("h-9");
     expect(screen.getByRole("button", { name: "Salvar" })).toHaveClass("h-9");
   });
+
+  it("uses the pointer cursor for actionable buttons", () => {
+    render(<Button>Salvar</Button>);
+
+    expect(screen.getByRole("button", { name: "Salvar" })).toHaveClass(
+      "cursor-pointer",
+    );
+  });
 });

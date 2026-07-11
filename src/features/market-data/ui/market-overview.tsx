@@ -33,7 +33,7 @@ export function MarketOverview({ items }: { items: MarketOverviewItem[] }) {
           <th className="border-b px-3 py-3 font-medium">Ativo</th>
           <th className="border-b px-3 py-3 font-medium">Preço</th>
           <th className="border-b px-3 py-3 font-medium">Sinal</th>
-          <th className="border-b px-3 py-3 font-medium">Último pregão</th>
+          <th className="border-b px-3 py-3 font-medium">Última atualização</th>
           <th className="border-b px-3 py-3 font-medium">Status</th>
           <th className="border-b px-3 py-3 text-right font-medium">
             Detalhes

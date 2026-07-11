@@ -1,5 +1,15 @@
 # Git Process
 
+## Branches
+
+Start every new change on a dedicated branch based on `main`. Before creating
+the branch, fetch `origin` and rebase the local `main` branch onto the latest
+`origin/main` so new work includes the most recent upstream changes.
+
+If work has already started, rebase the working branch onto the latest
+`origin/main` before continuing and resolve any conflicts against the updated
+codebase.
+
 ## Commits
 
 Use Conventional Commits for commit messages:
