@@ -11,4 +11,6 @@ Start with the `docs/` folder before making project decisions:
 - `docs/architecture.md`: feature module structure, layer boundaries, validation, App Router usage, market data, alerts, and testing expectations.
 - `docs/ui-guidelines.md`: product interface language, composition, colors, and component usage.
 - `docs/git-process.md`: commit and pull request conventions.
+- `docs/issue-tracker.md`: GitHub issue workflow and the repository's existing
+  label vocabulary.
 - `docs/adr/`: accepted architecture decision records, including feature module layering and the separation between product profiles and Auth.js users.
