@@ -7,9 +7,12 @@ const timeFormatter = new Intl.DateTimeFormat("pt-BR", {
   minute: "2-digit",
 });
 
-export function formatHumanDate(value: Date | string, now: Date = new Date()) {
+export function formatHumanDate(
+  value: Date | string,
+  now: Date | string = new Date(),
+) {
   const date = toLocalDate(value);
-  const dayDifference = differenceInCalendarDays(date, now);
+  const dayDifference = differenceInCalendarDays(date, toLocalDate(now));
 
   if (dayDifference === 0) {
     return "Hoje";
@@ -24,6 +27,19 @@ export function formatHumanDate(value: Date | string, now: Date = new Date()) {
 
 export function formatHumanDateTime(date: Date, now: Date = new Date()) {
   return `${formatHumanDate(date, now)}, ${timeFormatter.format(date)}`;
+}
+
+export function formatCalendarDateInTimeZone(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone,
+    year: "numeric",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value;
+
+  return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
 function toLocalDate(value: Date | string) {

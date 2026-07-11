@@ -46,8 +46,10 @@ export type WatchlistManagementItem = WatchlistItem & {
 
 export function WatchlistManagement({
   items,
+  referenceDate,
 }: {
   items: WatchlistManagementItem[];
+  referenceDate: string;
 }) {
   return (
     <div className="grid gap-8">
@@ -114,7 +116,11 @@ export function WatchlistManagement({
           </thead>
           <tbody>
             {items.map((item) => (
-              <WatchlistRow item={item} key={item.id} />
+              <WatchlistRow
+                item={item}
+                key={item.id}
+                referenceDate={referenceDate}
+              />
             ))}
           </tbody>
         </Table>
@@ -123,7 +129,13 @@ export function WatchlistManagement({
   );
 }
 
-function WatchlistRow({ item }: { item: WatchlistManagementItem }) {
+function WatchlistRow({
+  item,
+  referenceDate,
+}: {
+  item: WatchlistManagementItem;
+  referenceDate: string;
+}) {
   const refreshAction = refreshWatchlistItemMarketData.bind(null, item.id);
   const toggleAction = setWatchlistItemEnabled.bind(
     null,
@@ -143,7 +155,7 @@ function WatchlistRow({ item }: { item: WatchlistManagementItem }) {
         <div className="grid gap-1">
           <span className="text-sm font-medium">
             {item.latestMarketDate
-              ? formatHumanDate(item.latestMarketDate)
+              ? formatHumanDate(item.latestMarketDate, referenceDate)
               : "Sem dados"}
           </span>
           <span className="text-xs text-muted-foreground">
