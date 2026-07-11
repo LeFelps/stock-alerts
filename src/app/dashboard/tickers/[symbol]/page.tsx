@@ -46,7 +46,15 @@ export default async function TickerPage({
   ]);
 
   return (
-    <DashboardShell activeSection="overview" userEmail={currentProfile.email}>
+    <DashboardShell
+      activeSection="overview"
+      breadcrumbs={[
+        { href: "/dashboard", label: "Dashboard" },
+        { label: "Ativos" },
+        { label: symbol },
+      ]}
+      userEmail={currentProfile.email}
+    >
       <section className="grid gap-6">
         <SectionHeader
           title="Detalhe do Ativo"

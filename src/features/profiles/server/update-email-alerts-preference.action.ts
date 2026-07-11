@@ -30,5 +30,5 @@ export async function updateEmailAlertsPreference(formData: FormData) {
     notFound();
   }
 
-  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard/preferences");
 }

@@ -29,7 +29,7 @@ export async function createWatchlistItem(formData: FormData) {
     return;
   }
 
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/settings");
 }
 
 export async function updateWatchlistItem(itemId: string, formData: FormData) {
@@ -89,5 +89,5 @@ function handleMutationResult(result: {
     return;
   }
 
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/settings");
 }

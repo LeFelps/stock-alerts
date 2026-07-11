@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import JobsPage from "./dashboard/jobs/page";
+import PreferencesPage from "./dashboard/preferences/page";
 import SignalsPage from "./dashboard/signals/page";
 import SettingsPage from "./dashboard/settings/page";
 import TickerPage from "./dashboard/tickers/[symbol]/page";
@@ -210,7 +211,9 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Painel protegido")).toBeInTheDocument();
     expect(screen.getByText("Sessão ativa")).toBeInTheDocument();
     expect(screen.getByText("user@example.com")).toBeInTheDocument();
-    expect(screen.getByText("Visão geral")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: /Dashboard/ })[0],
+    ).toHaveAttribute("href", "/dashboard");
     expect(screen.getAllByRole("link", { name: /Sinais/ })[0]).toHaveAttribute(
       "href",
       "/dashboard/signals",
@@ -221,6 +224,9 @@ describe("DashboardPage", () => {
     expect(
       screen.getAllByRole("link", { name: /Configurações/ })[0],
     ).toHaveAttribute("href", "/dashboard/settings");
+    expect(
+      screen.getAllByRole("link", { name: /Preferências/ })[0],
+    ).toHaveAttribute("href", "/dashboard/preferences");
     expect(listWatchlistItemsForProfileMock).toHaveBeenCalledWith(
       { profileId: "profile-1" },
       {
@@ -229,18 +235,27 @@ describe("DashboardPage", () => {
         }),
       },
     );
-    expect(listLatestMarketDataDatesForSymbolsMock).toHaveBeenCalledWith(
-      { symbols: [] },
-      {
-        priceSnapshotRepository: expect.objectContaining({
-          type: "price-snapshot-repository",
-        }),
-      },
-    );
     expect(latestIndicatorsBySymbolMock).toHaveBeenCalledWith([]);
+    expect(screen.queryByText("Adicionar ativo")).not.toBeInTheDocument();
     expect(
-      screen.getByText("A Lista de acompanhamento está vazia."),
-    ).toBeInTheDocument();
+      screen.queryByText("Lista de acompanhamento"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens the mobile navigation with reduced-motion-safe transitions", async () => {
+    requireCurrentProfileMock.mockResolvedValue({
+      email: "user@example.com",
+      profile: createProfile({ emailAlertsEnabled: true }),
+    });
+
+    render(await DashboardPage());
+    fireEvent.click(screen.getByRole("button", { name: "Abrir navegação" }));
+
+    const drawer = screen.getByRole("dialog");
+    expect(drawer).toHaveClass("transition-transform");
+    expect(drawer).toHaveClass("motion-reduce:transition-none");
+    expect(drawer).toHaveClass("data-[state=open]:translate-x-0");
+    expect(drawer).toHaveClass("data-[state=closed]:-translate-x-full");
   });
 
   it("renders the watchlist rows returned for the current profile", async () => {
@@ -282,21 +297,16 @@ describe("DashboardPage", () => {
 
     render(await DashboardPage());
 
-    expect(screen.getByDisplayValue("PETR4")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Petrobras")).toBeInTheDocument();
-    expect(screen.getAllByText("02/01/2026").length).toBeGreaterThan(1);
+    expect(screen.getByText("PETR4")).toBeInTheDocument();
     expect(screen.getByText("Aguardando regra")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Abrir/ })).toHaveAttribute(
       "href",
       "/dashboard/tickers/PETR4",
     );
     expect(
-      screen.getByRole("button", { name: /Atualizar/ }),
-    ).toBeInTheDocument();
-    expect(screen.getAllByText("Ativo").length).toBeGreaterThan(1);
-    expect(
-      screen.queryByText("A Lista de acompanhamento está vazia."),
+      screen.queryByRole("button", { name: /Atualizar/ }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("PETR4")).not.toBeInTheDocument();
   });
 
   it("redirects signed-out users to the sign-in page", async () => {
@@ -384,6 +394,18 @@ describe("TickerPage", () => {
     expect(listPriceSnapshotsForSymbolMock).toHaveBeenCalledWith("PETR4");
     expect(listIndicatorSnapshotsForSymbolMock).toHaveBeenCalledWith("PETR4");
     expect(screen.getByRole("heading", { name: "PETR4" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: "Trilha de navegação" }),
+    ).toHaveTextContent("DashboardAtivosPETR4");
+    expect(
+      screen
+        .getByRole("navigation", { name: "Trilha de navegação" })
+        .querySelector('a[href="/dashboard"]'),
+    ).toHaveTextContent("Dashboard");
+    expect(screen.getByText("PETR4", { selector: "span" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     expect(screen.getByText("Preços de fechamento")).toBeInTheDocument();
     expect(screen.getByText("Dados do gráfico MME")).toBeInTheDocument();
     expect(screen.getByText("Snapshots brutos")).toBeInTheDocument();
@@ -550,7 +572,7 @@ describe("SettingsPage", () => {
     requireCurrentProfileMock.mockReset();
   });
 
-  it("renders the signed-in email and enabled alert preference", async () => {
+  it("renders Lista de acompanhamento management", async () => {
     requireCurrentProfileMock.mockResolvedValue({
       email: "user@example.com",
       profile: createProfile({ emailAlertsEnabled: true }),
@@ -561,32 +583,79 @@ describe("SettingsPage", () => {
     expect(
       screen.getByRole("heading", { name: "Configurações" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Email de acesso")).toBeInTheDocument();
-    expect(screen.getAllByText("user@example.com")).toHaveLength(2);
-    expect(screen.getByText("Ativados")).toBeInTheDocument();
     expect(
-      screen.getByRole("checkbox", { name: /Alertas por email/ }),
-    ).toBeChecked();
+      screen.getByRole("button", { name: "Adicionar ativo" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("A Lista de acompanhamento está vazia."),
+    ).toBeInTheDocument();
+    expect(listWatchlistItemsForProfileMock).toHaveBeenCalledWith(
+      { profileId: "profile-1" },
+      {
+        watchlistRepository: expect.objectContaining({
+          type: "watchlist-repository",
+        }),
+      },
+    );
   });
 
-  it("renders the disabled alert preference", async () => {
+  it("renders existing Ativos with all management actions", async () => {
     requireCurrentProfileMock.mockResolvedValue({
       email: "user@example.com",
       profile: createProfile({ emailAlertsEnabled: false }),
     });
 
+    listWatchlistItemsForProfileMock.mockResolvedValue([
+      {
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        displayName: "Petrobras",
+        enabled: true,
+        id: "item-1",
+        notes: null,
+        profileId: "profile-1",
+        symbol: "PETR4",
+        updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    ]);
+
     render(await SettingsPage());
 
-    expect(screen.getByText("Desativados")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("PETR4")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Salvar/ })).toBeInTheDocument();
     expect(
-      screen.getByRole("checkbox", { name: /Alertas por email/ }),
-    ).not.toBeChecked();
+      screen.getByRole("button", { name: /Atualizar/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Pausar/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Excluir/ })).toBeInTheDocument();
   });
 
   it("redirects signed-out users to the sign-in page", async () => {
     requireCurrentProfileMock.mockRejectedValue(new Error("NEXT_REDIRECT:/"));
 
     await expect(SettingsPage()).rejects.toThrow("NEXT_REDIRECT:/");
+  });
+});
+
+describe("PreferencesPage", () => {
+  beforeEach(() => {
+    requireCurrentProfileMock.mockReset();
+  });
+
+  it("renders profile and email-alert preferences on their own route", async () => {
+    requireCurrentProfileMock.mockResolvedValue({
+      email: "user@example.com",
+      profile: createProfile({ emailAlertsEnabled: true }),
+    });
+
+    render(await PreferencesPage());
+
+    expect(
+      screen.getByRole("heading", { name: "Preferências" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Email de acesso")).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /Alertas por email/ }),
+    ).toBeChecked();
   });
 });
 

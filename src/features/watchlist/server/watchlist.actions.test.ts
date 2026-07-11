@@ -101,7 +101,7 @@ describe("watchlist actions", () => {
       },
       { watchlistRepository: { type: "watchlist-repository" } },
     );
-    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/settings");
   });
 
   it("does not revalidate when creation finds a duplicate", async () => {
@@ -128,7 +128,7 @@ describe("watchlist actions", () => {
       },
       { watchlistRepository: { type: "watchlist-repository" } },
     );
-    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/settings");
   });
 
   it("passes item and profile ownership to enable and delete", async () => {

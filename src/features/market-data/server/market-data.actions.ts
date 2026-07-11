@@ -49,6 +49,7 @@ export async function refreshWatchlistItemMarketData(
   }
 
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/settings");
 
   const requestedPath = formData?.get("revalidatePath");
   const parsedPath = revalidatePathSchema.safeParse(requestedPath);

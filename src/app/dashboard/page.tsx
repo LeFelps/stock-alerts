@@ -4,13 +4,10 @@ import {
 } from "@/app/dashboard/_components/dashboard-shell";
 import { Badge } from "@/components/ui/badge";
 import { createDrizzleIndicatorSnapshotRepository } from "@/features/indicators/infrastructure/drizzle-indicator-snapshot-repository";
-import { listLatestMarketDataDatesForSymbols } from "@/features/market-data/application/refresh-market-data";
-import { createDrizzlePriceSnapshotRepository } from "@/features/market-data/infrastructure/drizzle-price-snapshot-repository";
 import { MarketOverview } from "@/features/market-data/ui/market-overview";
 import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
 import { listWatchlistItemsForProfile } from "@/features/watchlist/application/manage-watchlist";
 import { createDrizzleWatchlistRepository } from "@/features/watchlist/infrastructure/drizzle-watchlist-repository";
-import { WatchlistManagement } from "@/features/watchlist/ui/watchlist-management";
 
 export default async function DashboardPage() {
   const currentProfile = await requireCurrentProfile();
@@ -22,14 +19,6 @@ export default async function DashboardPage() {
   const symbols = watchlistItems.map((item) => item.symbol);
   const latestIndicators =
     await createDrizzleIndicatorSnapshotRepository().latestBySymbol(symbols);
-  const latestMarketDates = await listLatestMarketDataDatesForSymbols(
-    { symbols },
-    { priceSnapshotRepository: createDrizzlePriceSnapshotRepository() },
-  );
-  const watchlistItemsWithMarketData = watchlistItems.map((item) => ({
-    ...item,
-    latestMarketDate: latestMarketDates.get(item.symbol) ?? null,
-  }));
 
   return (
     <DashboardShell activeSection="overview" userEmail={currentProfile.email}>
@@ -56,14 +45,6 @@ export default async function DashboardPage() {
             watchlistItem: item,
           }))}
         />
-      </section>
-
-      <section className="grid gap-6">
-        <SectionHeader
-          title="Lista de acompanhamento"
-          description="Adicione e organize os Ativos que você deseja monitorar."
-        />
-        <WatchlistManagement items={watchlistItemsWithMarketData} />
       </section>
     </DashboardShell>
   );
