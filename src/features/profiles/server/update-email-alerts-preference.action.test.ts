@@ -70,7 +70,7 @@ describe("updateEmailAlertsPreference", () => {
       { enabled: true, profileId: toProfileId("profile-1") },
       { profilesRepository: { type: "profiles-repository" } },
     );
-    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/settings");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/preferences");
   });
 
   it("disables email alerts when the checkbox is omitted", async () => {
@@ -80,7 +80,7 @@ describe("updateEmailAlertsPreference", () => {
       { enabled: false, profileId: toProfileId("profile-1") },
       { profilesRepository: { type: "profiles-repository" } },
     );
-    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/settings");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/preferences");
   });
 
   it("renders not found when the profile update target is missing", async () => {

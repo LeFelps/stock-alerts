@@ -2,10 +2,12 @@ import type { ReactNode } from "react";
 import {
   Bell,
   Clock3,
+  ChevronRight,
   LineChart,
   LogOut,
   Menu,
   Settings,
+  SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -21,7 +23,17 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-export type DashboardSection = "jobs" | "overview" | "settings" | "signals";
+export type DashboardSection =
+  | "jobs"
+  | "overview"
+  | "preferences"
+  | "settings"
+  | "signals";
+
+export type BreadcrumbItem = {
+  label: string;
+  href?: string;
+};
 
 type DashboardNavItem = {
   label: string;
@@ -32,10 +44,22 @@ type DashboardNavItem = {
 
 const navItems: DashboardNavItem[] = [
   {
-    label: "Visão geral",
+    label: "Dashboard",
     icon: LineChart,
     section: "overview",
     href: "/dashboard",
+  },
+  {
+    label: "Configurações",
+    icon: Settings,
+    section: "settings",
+    href: "/dashboard/settings",
+  },
+  {
+    label: "Preferências",
+    icon: SlidersHorizontal,
+    section: "preferences",
+    href: "/dashboard/preferences",
   },
   {
     label: "Sinais",
@@ -49,22 +73,18 @@ const navItems: DashboardNavItem[] = [
     section: "jobs",
     href: "/dashboard/jobs",
   },
-  {
-    label: "Configurações",
-    icon: Settings,
-    section: "settings",
-    href: "/dashboard/settings",
-  },
 ];
 
 export function DashboardShell({
   activeSection,
   userEmail,
   children,
+  breadcrumbs,
 }: {
   activeSection: DashboardSection;
   userEmail: string;
   children: ReactNode;
+  breadcrumbs?: BreadcrumbItem[];
 }) {
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -74,7 +94,10 @@ export function DashboardShell({
         <div className="grid flex-1 gap-8 py-8 lg:grid-cols-[14rem_1fr]">
           <DesktopSidebarNav activeSection={activeSection} />
 
-          <section className="grid content-start gap-10">{children}</section>
+          <section className="grid content-start gap-10">
+            {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
+            {children}
+          </section>
         </div>
       </div>
     </main>
@@ -106,17 +129,6 @@ function DashboardHeader({
         <span className="hidden max-w-56 truncate text-sm text-muted-foreground md:inline">
           {userEmail}
         </span>
-        <Button
-          asChild
-          className="hidden sm:inline-flex"
-          variant="outline"
-          size="sm"
-        >
-          <Link href="/dashboard/settings">
-            <Settings aria-hidden="true" className="size-4" />
-            Configurações
-          </Link>
-        </Button>
         <form action={signOutUser}>
           <Button aria-label="Sair" size="icon" type="submit" variant="outline">
             <LogOut aria-hidden="true" className="size-4" />
@@ -125,6 +137,38 @@ function DashboardHeader({
         <MobileNavDrawer activeSection={activeSection} />
       </div>
     </header>
+  );
+}
+
+function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
+  return (
+    <nav aria-label="Trilha de navegação">
+      <ol className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        {items.map((item, index) => {
+          const current = index === items.length - 1;
+
+          return (
+            <li
+              className="flex items-center gap-2"
+              key={`${item.label}-${index}`}
+            >
+              {index > 0 && (
+                <ChevronRight aria-hidden="true" className="size-4" />
+              )}
+              {item.href && !current ? (
+                <Link className="hover:text-foreground" href={item.href}>
+                  {item.label}
+                </Link>
+              ) : (
+                <span aria-current={current ? "page" : undefined}>
+                  {item.label}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }
 
