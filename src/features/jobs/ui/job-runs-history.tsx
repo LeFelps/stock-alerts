@@ -24,6 +24,7 @@ export function JobRunsHistory({ jobRuns }: { jobRuns: JobRun[] }) {
             <th className="border-b px-3 py-3 font-medium">Status</th>
             <th className="border-b px-3 py-3 font-medium">Duração</th>
             <th className="border-b px-3 py-3 font-medium">Ativos</th>
+            <th className="border-b px-3 py-3 font-medium">Ignorados</th>
             <th className="border-b px-3 py-3 font-medium">Sinais</th>
             <th className="border-b px-3 py-3 font-medium">Emails</th>
             <th className="border-b px-3 py-3 font-medium">Erro</th>
@@ -49,6 +50,9 @@ export function JobRunsHistory({ jobRuns }: { jobRuns: JobRun[] }) {
               </td>
               <td className="border-b px-3 py-3">
                 {jobRun.summary.refreshedSymbols}/{jobRun.summary.uniqueSymbols}
+              </td>
+              <td className="border-b px-3 py-3">
+                {jobRun.summary.staleTargets}
               </td>
               <td className="border-b px-3 py-3">
                 {jobRun.summary.createdSignals}

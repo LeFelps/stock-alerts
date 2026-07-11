@@ -6,6 +6,7 @@ import { createDrizzlePriceSnapshotRepository } from "@/features/market-data/inf
 import { createDrizzleSignalRepository } from "@/features/signals/infrastructure/drizzle-signal-repository";
 
 import { runAlertChecks } from "../application/run-alert-checks";
+import { createDrizzleAlertCheckCheckpointRepository } from "../infrastructure/drizzle-alert-checkpoint-repository";
 import { createDrizzleAlertCheckTargetRepository } from "../infrastructure/drizzle-alert-check-target-repository";
 import { createDrizzleJobRunRepository } from "../infrastructure/drizzle-job-run-repository";
 
@@ -13,6 +14,8 @@ export async function runCheckAlertsJob() {
   return runAlertChecks(
     {},
     {
+      alertCheckCheckpointRepository:
+        createDrizzleAlertCheckCheckpointRepository(),
       alertCheckTargetRepository: createDrizzleAlertCheckTargetRepository(),
       alertEmailDeliveryRepository: createDrizzleAlertEmailDeliveryRepository(),
       emailDeliveryProvider: createConfiguredEmailDeliveryProvider(),

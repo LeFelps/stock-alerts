@@ -18,12 +18,14 @@ import {
   type JobRunSummary,
 } from "../domain/job-run";
 import type {
+  AlertCheckCheckpointRepository,
   AlertCheckTarget,
   AlertCheckTargetRepository,
   JobRunRepository,
 } from "./ports";
 
 type RunAlertChecksDependencies = {
+  alertCheckCheckpointRepository: AlertCheckCheckpointRepository;
   alertCheckTargetRepository: AlertCheckTargetRepository;
   alertEmailDeliveryRepository: AlertEmailDeliveryRepository;
   emailDeliveryProvider: EmailDeliveryProvider;
@@ -49,6 +51,7 @@ export type RunAlertChecksResult =
 export async function runAlertChecks(
   _command: Record<string, never>,
   {
+    alertCheckCheckpointRepository,
     alertCheckTargetRepository,
     alertEmailDeliveryRepository,
     emailDeliveryProvider,
@@ -74,11 +77,17 @@ export async function runAlertChecks(
 
     summary.enabledTargets = targets.length;
     summary.uniqueSymbols = targetsBySymbol.size;
-    const symbolErrors: string[] = [];
+    const errors: string[] = [];
 
     for (const [symbol, symbolTargets] of targetsBySymbol) {
       try {
         const snapshots = await marketDataProvider.fetchDailyPrices(symbol);
+        const latestSnapshot = snapshots.at(-1);
+
+        if (!latestSnapshot) {
+          throw new Error("Market data response contained no daily prices");
+        }
+
         const indicatorSnapshots =
           calculateIndicatorSnapshotsFromPrices(snapshots);
 
@@ -87,47 +96,75 @@ export async function runAlertChecks(
         summary.refreshedSymbols += 1;
 
         for (const target of symbolTargets) {
-          const detectedSignals = detectBuySignalsForProfile({
-            indicatorSnapshots,
-            profileId: target.profileId,
-          });
-          const recordedSignals =
-            await signalRepository.upsertMany(detectedSignals);
-          summary.createdSignals += recordedSignals.length;
+          try {
+            const lastProcessedMarketDate =
+              await alertCheckCheckpointRepository.latestProcessedMarketDate({
+                profileId: target.profileId,
+                symbol,
+              });
 
-          const deliveryOutcomes = await deliverBuySignalAlerts(
-            {
-              emailAlertsEnabled: target.emailAlertsEnabled,
-              recipientEmail: target.recipientEmail,
-              signals: recordedSignals,
-            },
-            {
-              alertEmailDeliveryRepository,
-              emailDeliveryProvider,
-            },
-          );
-
-          for (const outcome of deliveryOutcomes) {
-            if (outcome.type === "sent") {
-              summary.sentEmails += 1;
+            if (
+              lastProcessedMarketDate &&
+              latestSnapshot.marketDate <= lastProcessedMarketDate
+            ) {
+              summary.staleTargets += 1;
+              continue;
             }
 
-            if (outcome.type === "skipped") {
-              summary.skippedEmails += 1;
+            const detectedSignals = detectBuySignalsForProfile({
+              indicatorSnapshots,
+              profileId: target.profileId,
+            }).filter(
+              (signal) =>
+                !lastProcessedMarketDate ||
+                signal.marketDate > lastProcessedMarketDate,
+            );
+            const recordedSignals =
+              await signalRepository.upsertMany(detectedSignals);
+            summary.createdSignals += recordedSignals.length;
+
+            const deliveryOutcomes = await deliverBuySignalAlerts(
+              {
+                emailAlertsEnabled: target.emailAlertsEnabled,
+                recipientEmail: target.recipientEmail,
+                signals: recordedSignals,
+              },
+              {
+                alertEmailDeliveryRepository,
+                emailDeliveryProvider,
+              },
+            );
+
+            for (const outcome of deliveryOutcomes) {
+              if (outcome.type === "sent") summary.sentEmails += 1;
+              if (outcome.type === "skipped") summary.skippedEmails += 1;
+
+              if (outcome.type === "failed") {
+                summary.failedEmails += 1;
+                errors.push(
+                  `${symbol}/${target.profileId}: email: ${outcome.delivery.providerError ?? "Unknown delivery failure"}`,
+                );
+              }
             }
 
-            if (outcome.type === "failed") {
-              summary.failedEmails += 1;
-            }
+            await alertCheckCheckpointRepository.markProcessed({
+              marketDate: latestSnapshot.marketDate,
+              profileId: target.profileId,
+              symbol,
+            });
+          } catch (error) {
+            summary.failedTargets += 1;
+            errors.push(`${symbol}/${target.profileId}: ${formatError(error)}`);
           }
         }
       } catch (error) {
-        symbolErrors.push(`${symbol}: ${formatError(error)}`);
+        summary.failedSymbols += 1;
+        errors.push(`${symbol}: ${formatError(error)}`);
       }
     }
 
-    if (symbolErrors.length > 0) {
-      const message = symbolErrors.join("; ");
+    if (errors.length > 0) {
+      const message = errors.join("; ");
 
       return {
         error: message,
@@ -215,8 +252,30 @@ async function finishJobRun({
 
 function formatError(error: unknown) {
   if (error instanceof Error && error.message) {
-    return error.message;
+    const metadata = formatErrorMetadata(error);
+    return metadata ? `${error.message} (${metadata})` : error.message;
   }
 
   return String(error);
+}
+
+function formatErrorMetadata(error: Error) {
+  const metadata = (error as Error & { metadata?: unknown }).metadata;
+
+  if (!metadata || typeof metadata !== "object") {
+    return null;
+  }
+
+  const values = metadata as { body?: unknown; status?: unknown };
+  const parts: string[] = [];
+
+  if (typeof values.status === "number") {
+    parts.push(`status ${values.status}`);
+  }
+
+  if (typeof values.body === "string" && values.body.trim()) {
+    parts.push(`body ${values.body.trim().slice(0, 500)}`);
+  }
+
+  return parts.join(", ") || null;
 }

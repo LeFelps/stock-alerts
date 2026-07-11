@@ -4,7 +4,12 @@ import { db } from "@/db";
 import { jobRuns } from "@/db/schema";
 
 import type { JobRunRepository } from "../application/ports";
-import { toJobRunId, type JobRun, type JobRunSummary } from "../domain/job-run";
+import {
+  emptyJobRunSummary,
+  toJobRunId,
+  type JobRun,
+  type JobRunSummary,
+} from "../domain/job-run";
 
 type Database = typeof db;
 type JobRunRow = typeof jobRuns.$inferSelect;
@@ -74,7 +79,10 @@ function toJobRun(jobRun: JobRunRow): JobRun {
     jobName: jobRun.jobName as JobRun["jobName"],
     startedAt: jobRun.startedAt,
     status: jobRun.status as JobRun["status"],
-    summary: jobRun.summary as JobRunSummary,
+    summary: {
+      ...emptyJobRunSummary(),
+      ...(jobRun.summary as Partial<JobRunSummary>),
+    },
     updatedAt: jobRun.updatedAt,
   };
 }

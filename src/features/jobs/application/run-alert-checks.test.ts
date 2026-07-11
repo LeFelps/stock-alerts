@@ -14,6 +14,7 @@ import { toSignalId, type Signal } from "@/features/signals/domain/signal";
 import { emptyJobRunSummary, toJobRunId, type JobRun } from "../domain/job-run";
 import { runAlertChecks } from "./run-alert-checks";
 import type { AlertCheckTargetRepository, JobRunRepository } from "./ports";
+import type { AlertCheckCheckpointRepository } from "./ports";
 
 describe("runAlertChecks", () => {
   it("refreshes each enabled symbol once and creates per-profile deliveries", async () => {
@@ -103,9 +104,12 @@ describe("runAlertChecks", () => {
           createdSignals: 2,
           enabledTargets: 2,
           failedEmails: 0,
+          failedSymbols: 0,
+          failedTargets: 0,
           refreshedSymbols: 1,
           sentEmails: 1,
           skippedEmails: 1,
+          staleTargets: 0,
           uniqueSymbols: 1,
         },
       }),
@@ -194,6 +198,156 @@ describe("runAlertChecks", () => {
       }),
     );
   });
+
+  it("captures provider response metadata in the failed job", async () => {
+    const deps = createDependencies();
+    const providerError = Object.assign(
+      new Error("Failed to fetch market data"),
+      {
+        metadata: { body: "rate limit exceeded", status: 429 },
+      },
+    );
+    vi.mocked(deps.jobRunRepository.start).mockResolvedValue(createJobRun());
+    vi.mocked(deps.jobRunRepository.finish).mockResolvedValue(
+      createJobRun({ status: "FAILED" }),
+    );
+    vi.mocked(
+      deps.alertCheckTargetRepository.listEnabledTargets,
+    ).mockResolvedValue([
+      {
+        emailAlertsEnabled: true,
+        profileId: toProfileId("profile-1"),
+        recipientEmail: "user@example.com",
+        symbol: "PETR4",
+      },
+    ]);
+    vi.mocked(deps.marketDataProvider.fetchDailyPrices).mockRejectedValue(
+      providerError,
+    );
+
+    const result = await runAlertChecks({}, deps);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        error:
+          "PETR4: Failed to fetch market data (status 429, body rate limit exceeded)",
+        ok: false,
+      }),
+    );
+    expect(deps.jobRunRepository.finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error:
+          "PETR4: Failed to fetch market data (status 429, body rate limit exceeded)",
+        summary: expect.objectContaining({ failedSymbols: 1 }),
+      }),
+    );
+  });
+
+  it("skips a target when its latest market date was already processed", async () => {
+    const deps = createDependencies();
+    const finishedRun = createJobRun({ status: "SUCCESS" });
+    vi.mocked(deps.jobRunRepository.start).mockResolvedValue(createJobRun());
+    vi.mocked(deps.jobRunRepository.finish).mockResolvedValue(finishedRun);
+    vi.mocked(
+      deps.alertCheckTargetRepository.listEnabledTargets,
+    ).mockResolvedValue([
+      {
+        emailAlertsEnabled: true,
+        profileId: toProfileId("profile-1"),
+        recipientEmail: "user@example.com",
+        symbol: "PETR4",
+      },
+    ]);
+    const snapshots = Array.from({ length: 43 }, (_, index) =>
+      createSnapshot(dateFromDayOffset(index), index < 42 ? 100 : 120),
+    );
+    vi.mocked(deps.marketDataProvider.fetchDailyPrices).mockResolvedValue(
+      snapshots,
+    );
+    vi.mocked(
+      deps.alertCheckCheckpointRepository.latestProcessedMarketDate,
+    ).mockResolvedValue(snapshots.at(-1)!.marketDate);
+
+    const result = await runAlertChecks({}, deps);
+
+    expect(result.ok).toBe(true);
+    expect(deps.signalRepository.upsertMany).not.toHaveBeenCalled();
+    expect(
+      deps.emailDeliveryProvider.sendBuySignalAlert,
+    ).not.toHaveBeenCalled();
+    expect(
+      deps.alertCheckCheckpointRepository.markProcessed,
+    ).not.toHaveBeenCalled();
+    expect(deps.jobRunRepository.finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        summary: expect.objectContaining({ staleTargets: 1 }),
+      }),
+    );
+  });
+
+  it("continues with another target after an email failure and records the failure", async () => {
+    const deps = createDependencies();
+    const failedRun = createJobRun({ status: "FAILED" });
+    const firstSignal = createSignal("signal-1", "profile-1");
+    const secondSignal = createSignal("signal-2", "profile-2");
+    const snapshots = Array.from({ length: 43 }, (_, index) =>
+      createSnapshot(dateFromDayOffset(index), index < 42 ? 100 : 120),
+    );
+    vi.mocked(deps.jobRunRepository.start).mockResolvedValue(createJobRun());
+    vi.mocked(deps.jobRunRepository.finish).mockResolvedValue(failedRun);
+    vi.mocked(
+      deps.alertCheckTargetRepository.listEnabledTargets,
+    ).mockResolvedValue([
+      {
+        emailAlertsEnabled: true,
+        profileId: toProfileId("profile-1"),
+        recipientEmail: "first@example.com",
+        symbol: "PETR4",
+      },
+      {
+        emailAlertsEnabled: true,
+        profileId: toProfileId("profile-2"),
+        recipientEmail: "second@example.com",
+        symbol: "PETR4",
+      },
+    ]);
+    vi.mocked(deps.marketDataProvider.fetchDailyPrices).mockResolvedValue(
+      snapshots,
+    );
+    vi.mocked(deps.signalRepository.upsertMany)
+      .mockResolvedValueOnce([firstSignal])
+      .mockResolvedValueOnce([secondSignal]);
+    vi.mocked(deps.alertEmailDeliveryRepository.reserve)
+      .mockResolvedValueOnce(createDelivery(firstSignal, "PENDING"))
+      .mockResolvedValueOnce(createDelivery(secondSignal, "PENDING"));
+    vi.mocked(deps.alertEmailDeliveryRepository.markFailed).mockResolvedValue({
+      ...createDelivery(firstSignal, "PENDING"),
+      providerError: "SES unavailable",
+      status: "FAILED",
+    });
+    vi.mocked(deps.alertEmailDeliveryRepository.markSent).mockResolvedValue(
+      createDelivery(secondSignal, "SENT"),
+    );
+    vi.mocked(deps.emailDeliveryProvider.sendBuySignalAlert)
+      .mockRejectedValueOnce(new Error("SES unavailable"))
+      .mockResolvedValueOnce({ providerMessageId: "ses-message-2" });
+
+    const result = await runAlertChecks({}, deps);
+
+    expect(result.ok).toBe(false);
+    expect(deps.emailDeliveryProvider.sendBuySignalAlert).toHaveBeenCalledTimes(
+      2,
+    );
+    expect(
+      deps.alertCheckCheckpointRepository.markProcessed,
+    ).toHaveBeenCalledTimes(2);
+    expect(deps.jobRunRepository.finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "FAILED",
+        summary: expect.objectContaining({ failedEmails: 1, sentEmails: 1 }),
+      }),
+    );
+  });
 });
 
 function createDependencies() {
@@ -203,6 +357,10 @@ function createDependencies() {
   ];
 
   return {
+    alertCheckCheckpointRepository: {
+      latestProcessedMarketDate: vi.fn().mockResolvedValue(null),
+      markProcessed: vi.fn(),
+    } satisfies AlertCheckCheckpointRepository,
     alertCheckTargetRepository: {
       listEnabledTargets: vi.fn(),
     } satisfies AlertCheckTargetRepository,
