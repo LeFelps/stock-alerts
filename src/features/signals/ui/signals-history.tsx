@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Table } from "@/components/ui/table";
+import { formatHumanDate, formatHumanDateTime } from "@/lib/format-date";
 
 import type { Signal } from "../domain/signal";
 
@@ -35,11 +36,11 @@ export function SignalsHistory({ signals }: { signals: Signal[] }) {
               <Badge variant="secondary">{formatSignalType(signal)}</Badge>
             </td>
             <td className="border-b px-3 py-3">
-              {formatMarketDate(signal.marketDate)}
+              {formatHumanDate(signal.marketDate)}
             </td>
             <td className="border-b px-3 py-3">{formatSignalReason(signal)}</td>
             <td className="border-b px-3 py-3">
-              {formatDateTime(signal.createdAt)}
+              {formatHumanDateTime(signal.createdAt)}
             </td>
           </tr>
         ))}
@@ -55,21 +56,8 @@ function formatSignalType(signal: Signal) {
 function formatSignalReason(signal: Signal) {
   switch (signal.reason) {
     case "EMA6_CROSSED_ABOVE_EMA42":
-      return "MME6 cruzou acima da MME42.";
+      return "MME6 > MME42";
     case "EMA6_CROSSED_ABOVE_EMA13_WHILE_ABOVE_EMA42":
-      return "MME6 cruzou acima da MME13 enquanto estava acima da MME42.";
+      return "MME6 > MME13 > MME42";
   }
-}
-
-function formatMarketDate(marketDate: string) {
-  const [year, month, day] = marketDate.split("-");
-
-  return `${day}/${month}/${year}`;
-}
-
-function formatDateTime(date: Date) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
 }

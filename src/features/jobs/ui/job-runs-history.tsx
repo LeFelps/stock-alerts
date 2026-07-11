@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Table } from "@/components/ui/table";
+import { formatHumanDateTime } from "@/lib/format-date";
 
 import type { JobRun } from "../domain/job-run";
 
@@ -34,7 +35,7 @@ export function JobRunsHistory({ jobRuns }: { jobRuns: JobRun[] }) {
         {jobRuns.map((jobRun) => (
           <tr key={jobRun.id}>
             <td className="border-b px-3 py-3">
-              {formatDateTime(jobRun.startedAt)}
+              {formatHumanDateTime(jobRun.startedAt)}
             </td>
             <td className="border-b px-3 py-3">
               <Badge
@@ -97,11 +98,4 @@ function formatEmails(jobRun: JobRun) {
     `${jobRun.summary.skippedEmails} ignorados`,
     `${jobRun.summary.failedEmails} falharam`,
   ].join(" · ");
-}
-
-function formatDateTime(date: Date) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
 }

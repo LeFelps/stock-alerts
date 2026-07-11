@@ -468,6 +468,15 @@ describe("SignalsPage", () => {
         signalType: "BUY",
         symbol: "PETR4",
       },
+      {
+        createdAt: new Date("2026-01-03T12:00:00.000Z"),
+        id: "signal-2",
+        marketDate: "2026-01-03",
+        profileId: "profile-1",
+        reason: "EMA6_CROSSED_ABOVE_EMA13_WHILE_ABOVE_EMA42",
+        signalType: "BUY",
+        symbol: "VALE3",
+      },
     ]);
 
     render(await SignalsPage());
@@ -478,9 +487,10 @@ describe("SignalsPage", () => {
       { signalRepository: { type: "signal-repository" } },
     );
     expect(screen.getByText("PETR4")).toBeInTheDocument();
-    expect(screen.getByText("Compra técnica")).toBeInTheDocument();
+    expect(screen.getAllByText("Compra técnica")).toHaveLength(2);
     expect(screen.getByText("02/01/2026")).toBeInTheDocument();
-    expect(screen.getByText("MME6 cruzou acima da MME42.")).toBeInTheDocument();
+    expect(screen.getByText("MME6 > MME42")).toBeInTheDocument();
+    expect(screen.getByText("MME6 > MME13 > MME42")).toBeInTheDocument();
   });
 
   it("renders an empty state for profiles without signals", async () => {
@@ -647,13 +657,21 @@ describe("SettingsPage", () => {
 
     render(await SettingsPage());
 
-    expect(screen.getByDisplayValue("PETR4")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Salvar/ })).toBeInTheDocument();
+    expect(screen.getByText("PETR4")).toBeInTheDocument();
+    expect(screen.getByText("Petrobras")).toBeInTheDocument();
+    expect(screen.getByText("Sem observações")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("PETR4")).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Atualizar/ }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Pausar/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Excluir/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Editar/ }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("PETR4")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Salvar alterações" }),
+    ).toBeInTheDocument();
   });
 
   it("redirects signed-out users to the sign-in page", async () => {

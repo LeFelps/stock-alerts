@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Table } from "@/components/ui/table";
 import type { IndicatorSnapshot } from "@/features/indicators/domain/indicator-snapshot";
 import type { WatchlistItem } from "@/features/watchlist/domain/watchlist-item";
+import { formatHumanDate } from "@/lib/format-date";
 
 export type MarketOverviewItem = {
   latestIndicator: IndicatorSnapshot | null;
@@ -86,11 +87,5 @@ function formatCurrency(value: number | null | undefined) {
 }
 
 function formatMarketDate(marketDate: string | null) {
-  if (!marketDate) {
-    return "Sem dados";
-  }
-
-  const [year, month, day] = marketDate.split("-");
-
-  return `${day}/${month}/${year}`;
+  return marketDate ? formatHumanDate(marketDate) : "Sem dados";
 }
