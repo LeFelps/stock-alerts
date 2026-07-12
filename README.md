@@ -60,18 +60,20 @@ Configure this Google OAuth callback URL for local development:
 http://localhost:3000/api/auth/callback/google
 ```
 
-Manual market data refresh uses the configured market data provider. The MVP
-currently supports brapi.dev. A brapi token is required for tickers outside
-brapi's unrestricted test set:
+Market data is updated exclusively by the scheduled alert-check job; signed-in
+users cannot trigger provider requests. The job fetches each distinct enabled
+ticker once per run. The MVP currently supports brapi.dev. A brapi token is
+required for tickers outside brapi's unrestricted test set:
 
 ```bash
 MARKET_DATA_PROVIDER=brapi
 BRAPI_API_TOKEN=
 ```
 
-BUY signal email delivery uses Amazon SES. Delivery attempts are recorded per
-signal and recipient email, including skipped sends when a Perfil has email
-alerts disabled.
+BUY signal digest delivery uses Amazon SES. A run sends at most one digest per
+eligible Perfil, containing only signals for the expected market date. Delivery
+attempts remain recorded per signal and recipient email, including skipped
+sends when a Perfil has email alerts disabled.
 
 ```bash
 EMAIL_PROVIDER=ses
@@ -93,6 +95,14 @@ rejected when the secret is missing or does not match.
 ```bash
 CRON_SECRET=
 ```
+
+Production configures Vercel Cron with `0 11 * * 2-6`. Vercel evaluates cron
+expressions in UTC, so the job runs Tuesday through Saturday at 11:00 UTC,
+corresponding to 08:00 in `America/Sao_Paulo` while São Paulo remains UTC−03:00.
+Tuesday evaluates Monday's market data and Saturday evaluates Friday's. Only a
+signal whose market date exactly matches the previous São Paulo calendar day is
+eligible for email; delayed or historical signals are stored without being
+emailed. Vercel does not invoke cron jobs for preview deployments.
 
 Keep local values in `.env.local`; `.env*` files are ignored by git. Run
 `pnpm db:migrate` against a reachable Postgres `DATABASE_URL` before using auth

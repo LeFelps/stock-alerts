@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 
 import { db } from "@/db";
 import { alertEmailDeliveries } from "@/db/schema";
@@ -16,15 +16,19 @@ export function createDrizzleAlertEmailDeliveryRepository(
   database: Database = db,
 ): AlertEmailDeliveryRepository {
   return {
-    async createSkipped(command) {
-      const [delivery] = await database
+    async createSkippedMany(command) {
+      if (command.signalIds.length === 0) return [];
+
+      const deliveries = await database
         .insert(alertEmailDeliveries)
-        .values({
-          recipientEmail: command.recipientEmail,
-          signalId: command.signalId,
-          skippedReason: command.skippedReason,
-          status: "SKIPPED",
-        })
+        .values(
+          command.signalIds.map((signalId) => ({
+            recipientEmail: command.recipientEmail,
+            signalId,
+            skippedReason: command.skippedReason,
+            status: "SKIPPED",
+          })),
+        )
         .onConflictDoNothing({
           target: [
             alertEmailDeliveries.signalId,
@@ -33,29 +37,35 @@ export function createDrizzleAlertEmailDeliveryRepository(
         })
         .returning();
 
-      return delivery ? toAlertEmailDelivery(delivery) : null;
+      return deliveries.map(toAlertEmailDelivery);
     },
 
-    async markFailed(command) {
-      const [delivery] = await database
+    async markFailedMany(command) {
+      if (command.deliveryIds.length === 0) return [];
+
+      const deliveries = await database
         .update(alertEmailDeliveries)
         .set({
           providerError: command.providerError,
           status: "FAILED",
           updatedAt: new Date(),
         })
-        .where(eq(alertEmailDeliveries.id, command.deliveryId))
+        .where(inArray(alertEmailDeliveries.id, command.deliveryIds))
         .returning();
 
-      if (!delivery) {
-        throw new Error("Alert email delivery record not found");
+      if (deliveries.length !== command.deliveryIds.length) {
+        throw new Error(
+          "One or more alert email delivery records were not found",
+        );
       }
 
-      return toAlertEmailDelivery(delivery);
+      return deliveries.map(toAlertEmailDelivery);
     },
 
-    async markSent(command) {
-      const [delivery] = await database
+    async markSentMany(command) {
+      if (command.deliveryIds.length === 0) return [];
+
+      const deliveries = await database
         .update(alertEmailDeliveries)
         .set({
           providerMessageId: command.providerMessageId,
@@ -63,25 +73,31 @@ export function createDrizzleAlertEmailDeliveryRepository(
           status: "SENT",
           updatedAt: new Date(),
         })
-        .where(eq(alertEmailDeliveries.id, command.deliveryId))
+        .where(inArray(alertEmailDeliveries.id, command.deliveryIds))
         .returning();
 
-      if (!delivery) {
-        throw new Error("Alert email delivery record not found");
+      if (deliveries.length !== command.deliveryIds.length) {
+        throw new Error(
+          "One or more alert email delivery records were not found",
+        );
       }
 
-      return toAlertEmailDelivery(delivery);
+      return deliveries.map(toAlertEmailDelivery);
     },
 
-    async reserve(command) {
-      const [delivery] = await database
+    async reserveMany(command) {
+      if (command.signalIds.length === 0) return [];
+
+      const deliveries = await database
         .insert(alertEmailDeliveries)
-        .values({
-          provider: command.provider,
-          recipientEmail: command.recipientEmail,
-          signalId: command.signalId,
-          status: "PENDING",
-        })
+        .values(
+          command.signalIds.map((signalId) => ({
+            provider: command.provider,
+            recipientEmail: command.recipientEmail,
+            signalId,
+            status: "PENDING",
+          })),
+        )
         .onConflictDoNothing({
           target: [
             alertEmailDeliveries.signalId,
@@ -90,7 +106,7 @@ export function createDrizzleAlertEmailDeliveryRepository(
         })
         .returning();
 
-      return delivery ? toAlertEmailDelivery(delivery) : null;
+      return deliveries.map(toAlertEmailDelivery);
     },
   };
 }

@@ -1,7 +1,7 @@
 import { SendEmailCommand, SESClient } from "@aws-sdk/client-ses";
 
 import type { EmailDeliveryProvider } from "../application/ports";
-import type { BuySignalAlertEmail } from "../domain/email-delivery";
+import type { BuySignalDigestEmail } from "../domain/email-delivery";
 
 type SesEmailDeliveryProviderConfig = {
   fromEmail: string;
@@ -16,7 +16,7 @@ export function createSesEmailDeliveryProvider({
 
   return {
     name: "ses",
-    async sendBuySignalAlert(email) {
+    async sendBuySignalDigest(email) {
       const result = await client.send(
         new SendEmailCommand({
           Destination: {
@@ -26,12 +26,12 @@ export function createSesEmailDeliveryProvider({
             Body: {
               Text: {
                 Charset: "UTF-8",
-                Data: buildTextBody(email),
+                Data: buildDigestTextBody(email),
               },
             },
             Subject: {
               Charset: "UTF-8",
-              Data: `Sinal técnico de compra: ${email.signal.symbol}`,
+              Data: buildDigestSubject(email.marketDate),
             },
           },
           Source: fromEmail,
@@ -43,14 +43,39 @@ export function createSesEmailDeliveryProvider({
   };
 }
 
-function buildTextBody({ signal }: BuySignalAlertEmail) {
+export function buildDigestSubject(marketDate: string) {
+  return `[ALERTA] Sugestões de compra — ${formatMarketDate(marketDate)}`;
+}
+
+export function buildDigestTextBody({
+  marketDate,
+  signals,
+}: BuySignalDigestEmail) {
+  const signalsBySymbol = [...signals]
+    .sort(
+      (left, right) =>
+        left.symbol.localeCompare(right.symbol) ||
+        left.reason.localeCompare(right.reason),
+    )
+    .reduce<Map<string, BuySignalDigestEmail["signals"]>>((groups, signal) => {
+      const symbolSignals = groups.get(signal.symbol) ?? [];
+      symbolSignals.push(signal);
+      groups.set(signal.symbol, symbolSignals);
+      return groups;
+    }, new Map());
+
+  const entries = [...signalsBySymbol].flatMap(([symbol, symbolSignals]) => [
+    `Ativo: ${symbol}`,
+    ...symbolSignals.map(
+      (signal) => `- Motivo técnico: ${formatSignalReason(signal.reason)}`,
+    ),
+    "",
+  ]);
+
   return [
-    `Um sinal técnico de compra foi registrado para ${signal.symbol}.`,
+    `Sugestões de compra para ${formatMarketDate(marketDate)}:`,
     "",
-    `Ativo: ${signal.symbol}`,
-    `Data: ${formatMarketDate(signal.marketDate)}`,
-    `Motivo técnico: ${formatSignalReason(signal.reason)}`,
-    "",
+    ...entries,
     "Este alerta é gerado mecanicamente por regras técnicas configuradas no app e não constitui recomendação de investimento.",
   ].join("\n");
 }
@@ -61,7 +86,9 @@ function formatMarketDate(marketDate: string) {
   return `${day}/${month}/${year}`;
 }
 
-function formatSignalReason(reason: BuySignalAlertEmail["signal"]["reason"]) {
+function formatSignalReason(
+  reason: BuySignalDigestEmail["signals"][number]["reason"],
+) {
   switch (reason) {
     case "EMA6_CROSSED_ABOVE_EMA42":
       return "MME6 cruzou acima da MME42.";

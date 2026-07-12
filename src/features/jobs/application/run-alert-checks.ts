@@ -1,4 +1,4 @@
-import { deliverBuySignalAlerts } from "@/features/alerts/application/deliver-buy-signal-alerts";
+import { deliverBuySignalDigest } from "@/features/alerts/application/deliver-buy-signal-digest";
 import type {
   AlertEmailDeliveryRepository,
   EmailDeliveryProvider,
@@ -11,7 +11,9 @@ import type {
 } from "@/features/market-data/application/ports";
 import { detectBuySignalsForProfile } from "@/features/signals/application/detect-buy-signals";
 import type { SignalRepository } from "@/features/signals/application/ports";
+import type { Signal } from "@/features/signals/domain/signal";
 
+import { eligibleMarketDateForAlertCheck } from "../domain/eligible-market-date";
 import {
   emptyJobRunSummary,
   type JobRun,
@@ -64,6 +66,7 @@ export async function runAlertChecks(
   }: RunAlertChecksDependencies,
 ): Promise<RunAlertChecksResult> {
   const startedAt = now();
+  const eligibleMarketDate = eligibleMarketDateForAlertCheck(startedAt);
   const summary = emptyJobRunSummary();
   const jobRun = await jobRunRepository.start({
     jobName: "CHECK_ALERTS",
@@ -78,6 +81,10 @@ export async function runAlertChecks(
     summary.enabledTargets = targets.length;
     summary.uniqueSymbols = targetsBySymbol.size;
     const errors: string[] = [];
+    const digestCandidates = new Map<
+      string,
+      { signals: Signal[]; target: AlertCheckTarget }
+    >();
 
     for (const [symbol, symbolTargets] of targetsBySymbol) {
       try {
@@ -123,27 +130,18 @@ export async function runAlertChecks(
               await signalRepository.upsertMany(detectedSignals);
             summary.createdSignals += recordedSignals.length;
 
-            const deliveryOutcomes = await deliverBuySignalAlerts(
-              {
-                emailAlertsEnabled: target.emailAlertsEnabled,
-                recipientEmail: target.recipientEmail,
-                signals: recordedSignals,
-              },
-              {
-                alertEmailDeliveryRepository,
-                emailDeliveryProvider,
-              },
-            );
+            if (latestSnapshot.marketDate === eligibleMarketDate) {
+              const eligibleSignals = recordedSignals.filter(
+                (signal) => signal.marketDate === eligibleMarketDate,
+              );
 
-            for (const outcome of deliveryOutcomes) {
-              if (outcome.type === "sent") summary.sentEmails += 1;
-              if (outcome.type === "skipped") summary.skippedEmails += 1;
-
-              if (outcome.type === "failed") {
-                summary.failedEmails += 1;
-                errors.push(
-                  `${symbol}: email: ${outcome.delivery.providerError ?? "Unknown delivery failure"}`,
-                );
+              if (eligibleSignals.length > 0) {
+                const group = digestCandidates.get(target.profileId) ?? {
+                  signals: [],
+                  target,
+                };
+                group.signals.push(...eligibleSignals);
+                digestCandidates.set(target.profileId, group);
               }
             }
 
@@ -160,6 +158,37 @@ export async function runAlertChecks(
       } catch (error) {
         summary.failedSymbols += 1;
         errors.push(`${symbol}: ${formatError(error)}`);
+      }
+    }
+
+    for (const { signals, target } of digestCandidates.values()) {
+      try {
+        const outcome = await deliverBuySignalDigest(
+          {
+            emailAlertsEnabled: target.emailAlertsEnabled,
+            marketDate: eligibleMarketDate,
+            recipientEmail: target.recipientEmail,
+            signals,
+          },
+          {
+            alertEmailDeliveryRepository,
+            emailDeliveryProvider,
+            now,
+          },
+        );
+
+        if (outcome.type === "sent") summary.sentEmails += 1;
+        if (outcome.type === "skipped") summary.skippedEmails += 1;
+
+        if (outcome.type === "failed") {
+          summary.failedEmails += 1;
+          errors.push(
+            `${target.profileId}: email: ${outcome.deliveries[0]?.providerError ?? "Unknown delivery failure"}`,
+          );
+        }
+      } catch (error) {
+        summary.failedEmails += 1;
+        errors.push(`${target.profileId}: email: ${formatError(error)}`);
       }
     }
 

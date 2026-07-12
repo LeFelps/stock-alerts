@@ -24,9 +24,10 @@ export type AlertEmailDelivery = {
   updatedAt: Date;
 };
 
-export type BuySignalAlertEmail = {
+export type BuySignalDigestEmail = {
+  marketDate: string;
   recipientEmail: string;
-  signal: Signal;
+  signals: Signal[];
 };
 
 export function toAlertEmailDeliveryId(value: string): AlertEmailDeliveryId {
