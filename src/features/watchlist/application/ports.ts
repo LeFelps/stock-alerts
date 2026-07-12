@@ -2,14 +2,32 @@ import type { ProfileId } from "@/features/profiles/domain/profile";
 
 import type { WatchlistItem, WatchlistItemId } from "../domain/watchlist-item";
 
-export type WatchlistItemFields = Pick<
+export type ResolvedAsset = {
+  longName: string;
+  logoUrl: string | null;
+  symbol: string;
+};
+
+export type AssetResolution =
+  | { asset: ResolvedAsset; status: "resolved" }
+  | { status: "invalid" }
+  | { status: "unavailable" };
+
+export type AssetCatalogProvider = {
+  resolveSymbol(symbol: string): Promise<AssetResolution>;
+};
+
+export type CreateWatchlistItemFields = Pick<
   WatchlistItem,
-  "displayName" | "notes" | "symbol"
->;
+  "notes" | "symbol"
+> &
+  Pick<ResolvedAsset, "logoUrl" | "longName">;
+
+export type UpdateWatchlistItemFields = Pick<WatchlistItem, "notes">;
 
 export type WatchlistRepository = {
   create(
-    command: WatchlistItemFields & { profileId: ProfileId },
+    command: CreateWatchlistItemFields & { profileId: ProfileId },
   ): Promise<WatchlistItem | null>;
   delete(command: {
     itemId: WatchlistItemId;
@@ -31,7 +49,7 @@ export type WatchlistRepository = {
     profileId: ProfileId;
   }): Promise<WatchlistItem | null>;
   update(
-    command: WatchlistItemFields & {
+    command: UpdateWatchlistItemFields & {
       itemId: WatchlistItemId;
       profileId: ProfileId;
     },

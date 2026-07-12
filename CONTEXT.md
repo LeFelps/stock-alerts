@@ -9,6 +9,16 @@ acionados por regras definidas pelo usuário.
 Instrumento financeiro acompanhado pelo usuário no app.
 _Avoid_: Stock como termo de UI.
 
+**Código do Ativo**:
+Identificador alfanumérico canônico de um Ativo listado na B3. Um Perfil pode
+ter no máximo um item da Lista de acompanhamento para cada Código do Ativo.
+_Avoid_: Código antigo, Nome do Ativo.
+
+**Nome do Ativo**:
+Nome completo associado ao Código do Ativo pelo catálogo de mercado; não é
+definido pelo usuário.
+_Avoid_: Apelido, Nome personalizado.
+
 **Perfil**:
 Identidade pertencente ao app para uma pessoa autenticada. Um Perfil possui
 zero ou mais Listas de acompanhamento, Regras de alerta e Alertas.
@@ -43,3 +53,8 @@ Dev: Então o usuário cria uma Regra de alerta para um Ativo, e quando a condi�
 é atendida o sistema gera um Alerta?
 
 Especialista: Exatamente.
+
+Dev: E se alguém informar um código antigo que agora corresponde a outro?
+
+Especialista: Ao adicionar o Ativo, a Lista de acompanhamento registra o Código
+do Ativo canônico atual e o Nome do Ativo associado a ele.

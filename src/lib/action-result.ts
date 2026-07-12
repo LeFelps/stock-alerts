@@ -1,5 +1,6 @@
 export type ActionError =
   | "duplicate_symbol"
+  | "invalid_symbol"
   | "not_found"
   | "provider_error"
   | "validation_error";

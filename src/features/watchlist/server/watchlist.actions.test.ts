@@ -10,6 +10,7 @@ import {
 } from "./watchlist.actions";
 
 const createDrizzleWatchlistRepositoryMock = vi.hoisted(() => vi.fn());
+const createBrapiAssetCatalogProviderMock = vi.hoisted(() => vi.fn());
 const createWatchlistItemForProfileMock = vi.hoisted(() => vi.fn());
 const deleteWatchlistItemForProfileMock = vi.hoisted(() => vi.fn());
 const findByIdForProfileMock = vi.hoisted(() => vi.fn());
@@ -33,12 +34,20 @@ vi.mock("../infrastructure/drizzle-watchlist-repository", () => ({
   createDrizzleWatchlistRepository: createDrizzleWatchlistRepositoryMock,
 }));
 
+vi.mock("../infrastructure/brapi-asset-catalog-provider", () => ({
+  createBrapiAssetCatalogProvider: createBrapiAssetCatalogProviderMock,
+}));
+
 vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
 describe("watchlist actions", () => {
   beforeEach(() => {
+    createBrapiAssetCatalogProviderMock.mockReset();
+    createBrapiAssetCatalogProviderMock.mockReturnValue({
+      type: "asset-catalog-provider",
+    });
     createDrizzleWatchlistRepositoryMock.mockReset();
     createDrizzleWatchlistRepositoryMock.mockReturnValue({
       findByIdForProfile: findByIdForProfileMock,
@@ -88,12 +97,14 @@ describe("watchlist actions", () => {
 
     expect(createWatchlistItemForProfileMock).toHaveBeenCalledWith(
       {
-        displayName: "Petrobras",
         notes: "Longo prazo",
         profileId: toProfileId("profile-1"),
         symbol: "PETR4",
       },
       {
+        assetCatalogProvider: expect.objectContaining({
+          type: "asset-catalog-provider",
+        }),
         watchlistRepository: expect.objectContaining({
           type: "watchlist-repository",
         }),
@@ -113,16 +124,43 @@ describe("watchlist actions", () => {
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 
+  it("rejects malformed symbols before constructing providers or calling the use case", async () => {
+    await expect(createWatchlistItem(createFormData("AB-1"))).resolves.toEqual({
+      error: "validation_error",
+      status: "error",
+    });
+
+    expect(createBrapiAssetCatalogProviderMock).not.toHaveBeenCalled();
+    expect(createWatchlistItemForProfileMock).not.toHaveBeenCalled();
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["invalid_symbol", "invalid_symbol"],
+    ["provider_error", "provider_error"],
+  ] as const)(
+    "maps %s creation failures without revalidation",
+    async (type, error) => {
+      createWatchlistItemForProfileMock.mockResolvedValue({
+        error: { type },
+        ok: false,
+      });
+
+      await expect(
+        createWatchlistItem(createFormData("FAKE4")),
+      ).resolves.toEqual({ error, status: "error" });
+      expect(revalidatePathMock).not.toHaveBeenCalled();
+    },
+  );
+
   it("passes item and profile ownership to update", async () => {
     await updateWatchlistItem("item-1", createFormData("VALE3"));
 
     expect(updateWatchlistItemForProfileMock).toHaveBeenCalledWith(
       {
-        displayName: "Petrobras",
         itemId: "item-1",
         notes: "Longo prazo",
         profileId: toProfileId("profile-1"),
-        symbol: "VALE3",
       },
       {
         watchlistRepository: expect.objectContaining({
@@ -202,7 +240,6 @@ describe("watchlist actions", () => {
 
 function createFormData(symbol: string) {
   const formData = new FormData();
-  formData.set("displayName", "Petrobras");
   formData.set("notes", "Longo prazo");
   formData.set("symbol", symbol);
   return formData;
@@ -211,7 +248,8 @@ function createFormData(symbol: string) {
 function createItem(symbol: string) {
   return {
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
-    displayName: "Petrobras",
+    longName: "Petrobras",
+    logoUrl: null,
     enabled: true,
     id: "item-1",
     notes: "Longo prazo",

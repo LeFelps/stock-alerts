@@ -46,21 +46,21 @@ describe("WatchlistManagement optimistic actions", () => {
     updateWatchlistItemMock.mockReset();
   });
 
-  it("shows a submitted item immediately and reconciles it on success", async () => {
+  it("keeps the form pending without projecting a row and appends the resolved item", async () => {
     const request = deferred<ReturnType<typeof successItem>>();
     createWatchlistItemMock.mockReturnValue(request.promise);
-    render(<WatchlistManagement items={[]} referenceDate="2026-01-02" />);
+    const { container } = render(
+      <WatchlistManagement items={[]} referenceDate="2026-01-02" />,
+    );
 
     fireEvent.change(screen.getByLabelText("Código"), {
       target: { value: " pe tr4 " },
     });
-    fireEvent.change(screen.getByLabelText("Nome opcional"), {
-      target: { value: "Petrobras" },
-    });
     fireEvent.click(screen.getByRole("button", { name: "Adicionar ativo" }));
 
-    expect(screen.getByText("PETR4")).toBeInTheDocument();
-    expect(screen.getAllByText("Adicionando…")).toHaveLength(2);
+    expect(screen.queryByText("PETR4")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Validando…" })).toBeDisabled();
+    expect(screen.queryByLabelText("Nome opcional")).not.toBeInTheDocument();
 
     await act(async () => request.resolve(successItem()));
 
@@ -69,30 +69,69 @@ describe("WatchlistManagement optimistic actions", () => {
         "PETR4 foi adicionado à Lista de acompanhamento.",
       ),
     );
+    const longName = screen.getByText("Petróleo Brasileiro S.A. - Petrobras");
+    expect(longName).toHaveClass("max-w-64", "truncate");
+    expect(longName).toHaveAttribute(
+      "title",
+      "Petróleo Brasileiro S.A. - Petrobras",
+    );
+    expect(
+      container.querySelector(
+        'img[src="https://icons.brapi.dev/icons/PETR4.svg"]',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("Ativo")).toBeInTheDocument();
   });
 
-  it("rolls an optimistic add back and restores form values on failure", async () => {
-    const request = deferred<{ error: "duplicate_symbol"; status: "error" }>();
+  it("preserves form values and explains an invalid symbol", async () => {
+    const request = deferred<{ error: "invalid_symbol"; status: "error" }>();
     createWatchlistItemMock.mockReturnValue(request.promise);
     render(<WatchlistManagement items={[]} referenceDate="2026-01-02" />);
 
     const symbol = screen.getByLabelText("Código") as HTMLInputElement;
-    fireEvent.change(symbol, { target: { value: "PETR4" } });
+    fireEvent.change(symbol, { target: { value: "FAKE4" } });
     fireEvent.click(screen.getByRole("button", { name: "Adicionar ativo" }));
-    expect(screen.getByText("PETR4")).toBeInTheDocument();
+    expect(screen.queryByText("FAKE4")).not.toBeInTheDocument();
 
     await act(async () =>
-      request.resolve({ error: "duplicate_symbol", status: "error" }),
+      request.resolve({ error: "invalid_symbol", status: "error" }),
     );
 
-    await waitFor(() =>
-      expect(screen.queryByText("PETR4")).not.toBeInTheDocument(),
-    );
-    expect(symbol).toHaveValue("PETR4");
+    expect(symbol).toHaveValue("FAKE4");
     expect(toastErrorMock).toHaveBeenCalledWith(
-      "PETR4 já está na Lista de acompanhamento.",
+      "FAKE4 não é um Código de Ativo válido.",
     );
+  });
+
+  it("distinguishes a temporary provider failure from an invalid symbol", async () => {
+    createWatchlistItemMock.mockResolvedValue({
+      error: "provider_error",
+      status: "error",
+    });
+    render(<WatchlistManagement items={[]} referenceDate="2026-01-02" />);
+
+    fireEvent.change(screen.getByLabelText("Código"), {
+      target: { value: "PETR4" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar ativo" }));
+
+    await waitFor(() =>
+      expect(toastErrorMock).toHaveBeenCalledWith(
+        "Não foi possível validar PETR4 agora. Tente novamente.",
+      ),
+    );
+  });
+
+  it("renders the symbol when a legacy item has no long name", () => {
+    const item = successItem().data;
+    render(
+      <WatchlistManagement
+        items={[{ ...item, latestMarketDate: null, longName: null }]}
+        referenceDate="2026-01-02"
+      />,
+    );
+
+    expect(screen.getAllByText("PETR4")).toHaveLength(2);
   });
 });
 
@@ -100,7 +139,8 @@ function successItem() {
   return {
     data: {
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
-      displayName: "Petrobras",
+      longName: "Petróleo Brasileiro S.A. - Petrobras",
+      logoUrl: "https://icons.brapi.dev/icons/PETR4.svg",
       enabled: true,
       id: toWatchlistItemId("item-1"),
       notes: null,

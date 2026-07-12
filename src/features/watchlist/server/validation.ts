@@ -1,12 +1,20 @@
 import { z } from "zod";
 
-const watchlistFormSchema = z.object({
-  displayName: z.string().trim().max(120).nullable(),
+const createWatchlistFormSchema = z.object({
   notes: z.string().trim().max(1000).nullable(),
   symbol: z.string().regex(/^[A-Z0-9]{4,12}$/),
 });
 
-export type WatchlistFormResult = z.infer<typeof watchlistFormSchema>;
+const updateWatchlistFormSchema = z.object({
+  notes: z.string().trim().max(1000).nullable(),
+});
+
+export type CreateWatchlistFormResult = z.infer<
+  typeof createWatchlistFormSchema
+>;
+export type UpdateWatchlistFormResult = z.infer<
+  typeof updateWatchlistFormSchema
+>;
 
 export function normalizeTickerSymbol(
   value: FormDataEntryValue | null,
@@ -16,11 +24,20 @@ export function normalizeTickerSymbol(
     : "";
 }
 
-export function parseWatchlistForm(formData: FormData): WatchlistFormResult {
-  return watchlistFormSchema.parse({
-    displayName: optionalText(formData.get("displayName")),
+export function parseCreateWatchlistForm(
+  formData: FormData,
+): CreateWatchlistFormResult {
+  return createWatchlistFormSchema.parse({
     notes: optionalText(formData.get("notes")),
     symbol: normalizeTickerSymbol(formData.get("symbol")),
+  });
+}
+
+export function parseUpdateWatchlistForm(
+  formData: FormData,
+): UpdateWatchlistFormResult {
+  return updateWatchlistFormSchema.parse({
+    notes: optionalText(formData.get("notes")),
   });
 }
 

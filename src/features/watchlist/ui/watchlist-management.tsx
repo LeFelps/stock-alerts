@@ -11,6 +11,7 @@ import {
   Save,
   Trash2,
 } from "lucide-react";
+import Image from "next/image";
 import { startTransition, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -82,48 +83,27 @@ export function WatchlistManagement({
   function submitCreate(formData: FormData) {
     if (adding) return;
 
-    const submitted = normalizeFields(formData);
-    const temporaryId = `optimistic-${crypto.randomUUID()}`;
-    const now = new Date();
-    const optimistic: OptimisticItem = {
-      createdAt: now,
-      displayName: submitted.displayName,
-      enabled: true,
-      id: temporaryId,
-      latestMarketDate: null,
-      notes: submitted.notes,
-      profileId: items[0]?.profileId ?? ("" as WatchlistItem["profileId"]),
-      symbol: submitted.symbol,
-      updatedAt: now,
-    };
+    const submitted = normalizeCreateFields(formData);
 
     setAdding(true);
-    setRows((current) => [...current, optimistic]);
-    formRef.current?.reset();
 
     startTransition(async () => {
       try {
         const result = await createWatchlistItem(formData);
         if (result.status === "error") {
-          setRows((current) => current.filter((row) => row.id !== temporaryId));
-          restoreForm(formRef.current, submitted);
           toast.error(actionErrorMessage(result.error, submitted.symbol));
           return;
         }
 
-        setRows((current) =>
-          current.map((row) =>
-            row.id === temporaryId
-              ? { ...result.data, latestMarketDate: null }
-              : row,
-          ),
-        );
+        setRows((current) => [
+          ...current,
+          { ...result.data, latestMarketDate: null },
+        ]);
+        formRef.current?.reset();
         toast.success(
           `${result.data.symbol} foi adicionado à Lista de acompanhamento.`,
         );
       } catch {
-        setRows((current) => current.filter((row) => row.id !== temporaryId));
-        restoreForm(formRef.current, submitted);
         toast.error("Não foi possível adicionar o Ativo. Tente novamente.");
       } finally {
         setAdding(false);
@@ -131,10 +111,10 @@ export function WatchlistManagement({
     });
   }
 
-  function submitEdit(item: OptimisticItem, draft: WatchlistFields) {
+  function submitEdit(item: OptimisticItem, draft: WatchlistEditFields) {
     if (operations[item.id]) return;
     const previous = item;
-    const formData = fieldsToFormData(draft);
+    const formData = editFieldsToFormData(draft);
 
     setOperation(item.id, "edit");
     setRows((current) =>
@@ -150,7 +130,7 @@ export function WatchlistManagement({
           setRows((current) =>
             current.map((row) => (row.id === item.id ? previous : row)),
           );
-          toast.error(actionErrorMessage(result.error, draft.symbol));
+          toast.error(actionErrorMessage(result.error, item.symbol));
           return;
         }
 
@@ -273,7 +253,7 @@ export function WatchlistManagement({
     <div className="grid gap-8">
       <form
         aria-busy={adding}
-        className="grid items-end gap-4 border-b pb-8 md:grid-cols-[minmax(8rem,0.7fr)_minmax(12rem,1fr)_minmax(16rem,1.5fr)_auto]"
+        className="grid items-end gap-4 border-b pb-8 md:grid-cols-[minmax(8rem,0.7fr)_minmax(16rem,1.5fr)_auto]"
         onSubmit={(event) => {
           event.preventDefault();
           submitCreate(new FormData(event.currentTarget));
@@ -292,16 +272,6 @@ export function WatchlistManagement({
           />
         </label>
         <label className="grid gap-2 text-sm font-medium">
-          Nome opcional
-          <input
-            className={fieldClassName}
-            disabled={adding}
-            maxLength={120}
-            name="displayName"
-            placeholder="Petrobras"
-          />
-        </label>
-        <label className="grid gap-2 text-sm font-medium">
           Observações
           <input
             className={fieldClassName}
@@ -317,7 +287,7 @@ export function WatchlistManagement({
           ) : (
             <Plus aria-hidden="true" className="size-4" />
           )}
-          {adding ? "Adicionando…" : "Adicionar ativo"}
+          {adding ? "Validando…" : "Adicionar ativo"}
         </Button>
       </form>
 
@@ -332,6 +302,9 @@ export function WatchlistManagement({
         <Table>
           <thead className="text-muted-foreground">
             <tr>
+              <th className="w-12 border-b px-3 py-3 font-medium">
+                <span className="sr-only">Logo</span>
+              </th>
               <th className="border-b px-3 py-3 font-medium">Código</th>
               <th className="border-b px-3 py-3 font-medium">Nome</th>
               <th className="border-b px-3 py-3 font-medium">Observações</th>
@@ -355,7 +328,6 @@ export function WatchlistManagement({
                 onToggle={submitToggle}
                 operation={operations[item.id]}
                 referenceDate={referenceDate}
-                temporary={item.id.startsWith("optimistic-")}
               />
             ))}
           </tbody>
@@ -373,26 +345,31 @@ function WatchlistRow({
   onToggle,
   operation,
   referenceDate,
-  temporary,
 }: {
   item: OptimisticItem;
   onDelete: (item: OptimisticItem) => void;
-  onEdit: (item: OptimisticItem, draft: WatchlistFields) => void;
+  onEdit: (item: OptimisticItem, draft: WatchlistEditFields) => void;
   onRefresh: (item: OptimisticItem) => void;
   onToggle: (item: OptimisticItem) => void;
   operation?: ItemOperation;
   referenceDate: string;
-  temporary: boolean;
 }) {
-  const disabled = temporary || Boolean(operation);
+  const disabled = Boolean(operation);
 
   return (
-    <tr
-      aria-busy={disabled || undefined}
-      className={temporary ? "opacity-65" : undefined}
-    >
+    <tr aria-busy={disabled || undefined}>
+      <td className="w-12 border-b px-3 py-3">
+        <AssetLogo item={item} />
+      </td>
       <td className="border-b px-3 py-3 font-medium">{item.symbol}</td>
-      <td className="border-b px-3 py-3">{item.displayName ?? "Sem nome"}</td>
+      <td className="max-w-64 border-b px-3 py-3">
+        <span
+          className="block max-w-64 truncate"
+          title={item.longName ?? item.symbol}
+        >
+          {item.longName ?? item.symbol}
+        </span>
+      </td>
       <td className="border-b px-3 py-3 align-top">
         <ObservationHoverCard notes={item.notes} symbol={item.symbol} />
       </td>
@@ -410,7 +387,7 @@ function WatchlistRow({
       </td>
       <td className="border-b px-3 py-3 align-top">
         <Badge variant={item.enabled ? "default" : "secondary"}>
-          {temporary ? "Adicionando…" : item.enabled ? "Ativo" : "Pausado"}
+          {item.enabled ? "Ativo" : "Pausado"}
         </Badge>
       </td>
       <td className="border-b px-3 py-3 align-top">
@@ -468,6 +445,30 @@ function WatchlistRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+function AssetLogo({ item }: { item: OptimisticItem }) {
+  if (!item.logoUrl) {
+    return (
+      <span
+        aria-hidden="true"
+        className="flex size-8 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground"
+      >
+        {item.symbol.slice(0, 1)}
+      </span>
+    );
+  }
+
+  return (
+    <Image
+      alt=""
+      className="size-8 rounded-md object-contain"
+      height={32}
+      src={item.logoUrl}
+      unoptimized
+      width={32}
+    />
   );
 }
 
@@ -580,11 +581,12 @@ function ObservationHoverCard({
   );
 }
 
-type WatchlistFields = {
-  displayName: string | null;
+type WatchlistCreateFields = {
   notes: string | null;
   symbol: string;
 };
+
+type WatchlistEditFields = Pick<WatchlistCreateFields, "notes">;
 
 function EditWatchlistItemDialog({
   disabled,
@@ -594,19 +596,17 @@ function EditWatchlistItemDialog({
 }: {
   disabled: boolean;
   item: OptimisticItem;
-  onSubmit: (item: OptimisticItem, draft: WatchlistFields) => void;
+  onSubmit: (item: OptimisticItem, draft: WatchlistEditFields) => void;
   pending: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<WatchlistFields>({
-    displayName: item.displayName,
+  const [draft, setDraft] = useState<WatchlistEditFields>({
     notes: item.notes,
-    symbol: item.symbol,
   });
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const normalized = normalizeFields(new FormData(event.currentTarget));
+    const normalized = normalizeEditFields(new FormData(event.currentTarget));
     setDraft(normalized);
     setOpen(false);
     onSubmit(item, normalized);
@@ -632,27 +632,16 @@ function EditWatchlistItemDialog({
           id={`watchlist-item-${item.id}`}
           onSubmit={submit}
         >
-          <label className="grid gap-2 text-sm font-medium">
-            Código
-            <input
-              className={fieldClassName}
-              defaultValue={draft.symbol}
-              disabled={pending}
-              maxLength={12}
-              name="symbol"
-              required
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Nome opcional
-            <input
-              className={fieldClassName}
-              defaultValue={draft.displayName ?? ""}
-              disabled={pending}
-              maxLength={120}
-              name="displayName"
-            />
-          </label>
+          <dl className="grid grid-cols-2 gap-4 rounded-md bg-muted/50 p-4 text-sm">
+            <div className="grid gap-1">
+              <dt className="text-muted-foreground">Código</dt>
+              <dd className="font-medium">{item.symbol}</dd>
+            </div>
+            <div className="grid gap-1">
+              <dt className="text-muted-foreground">Nome</dt>
+              <dd className="font-medium">{item.longName ?? item.symbol}</dd>
+            </div>
+          </dl>
           <label className="grid gap-2 text-sm font-medium">
             Observações
             <textarea
@@ -685,7 +674,7 @@ function EditWatchlistItemDialog({
   );
 }
 
-function normalizeFields(formData: FormData): WatchlistFields {
+function normalizeCreateFields(formData: FormData): WatchlistCreateFields {
   const optional = (name: string) => {
     const value = formData.get(name);
     const normalized = typeof value === "string" ? value.trim() : "";
@@ -693,7 +682,6 @@ function normalizeFields(formData: FormData): WatchlistFields {
   };
   const rawSymbol = formData.get("symbol");
   return {
-    displayName: optional("displayName"),
     notes: optional("notes"),
     symbol:
       typeof rawSymbol === "string"
@@ -702,23 +690,16 @@ function normalizeFields(formData: FormData): WatchlistFields {
   };
 }
 
-function fieldsToFormData(fields: WatchlistFields) {
-  const formData = new FormData();
-  formData.set("symbol", fields.symbol);
-  formData.set("displayName", fields.displayName ?? "");
-  formData.set("notes", fields.notes ?? "");
-  return formData;
+function normalizeEditFields(formData: FormData): WatchlistEditFields {
+  const notes = formData.get("notes");
+  const normalized = typeof notes === "string" ? notes.trim() : "";
+  return { notes: normalized || null };
 }
 
-function restoreForm(form: HTMLFormElement | null, fields: WatchlistFields) {
-  if (!form) return;
-  const set = (name: string, value: string | null) => {
-    const control = form.elements.namedItem(name);
-    if (control instanceof HTMLInputElement) control.value = value ?? "";
-  };
-  set("symbol", fields.symbol);
-  set("displayName", fields.displayName);
-  set("notes", fields.notes);
+function editFieldsToFormData(fields: WatchlistEditFields) {
+  const formData = new FormData();
+  formData.set("notes", fields.notes ?? "");
+  return formData;
 }
 
 function restoreRow(
@@ -737,6 +718,10 @@ function restoreRow(
 function actionErrorMessage(error: ActionError, symbol: string) {
   if (error === "duplicate_symbol")
     return `${symbol} já está na Lista de acompanhamento.`;
+  if (error === "invalid_symbol")
+    return `${symbol} não é um Código de Ativo válido.`;
+  if (error === "provider_error")
+    return `Não foi possível validar ${symbol} agora. Tente novamente.`;
   if (error === "validation_error")
     return "Revise os dados informados e tente novamente.";
   if (error === "not_found")

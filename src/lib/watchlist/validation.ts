@@ -1,5 +1,7 @@
 export {
   normalizeTickerSymbol,
-  parseWatchlistForm,
-  type WatchlistFormResult,
+  parseCreateWatchlistForm,
+  parseUpdateWatchlistForm,
+  type CreateWatchlistFormResult,
+  type UpdateWatchlistFormResult,
 } from "@/features/watchlist/server/validation";

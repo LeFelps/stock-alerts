@@ -7,7 +7,8 @@ export type WatchlistItem = {
   id: WatchlistItemId;
   profileId: ProfileId;
   symbol: string;
-  displayName: string | null;
+  longName: string | null;
+  logoUrl: string | null;
   notes: string | null;
   enabled: boolean;
   createdAt: Date;

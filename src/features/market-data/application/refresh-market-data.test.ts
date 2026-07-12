@@ -217,7 +217,8 @@ function createEmailDeliveryProvider() {
 function createWatchlistItem(): WatchlistItem {
   return {
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
-    displayName: null,
+    longName: null,
+    logoUrl: null,
     enabled: true,
     id: toWatchlistItemId("item-1"),
     notes: null,
