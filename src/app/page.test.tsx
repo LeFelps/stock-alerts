@@ -211,7 +211,7 @@ describe("DashboardPage", () => {
     expect(screen.queryByText("Sessão ativa")).not.toBeInTheDocument();
     expect(screen.getByText("user@example.com")).toBeInTheDocument();
     expect(
-      screen.getAllByRole("link", { name: /Dashboard/ })[0],
+      screen.getAllByRole("link", { name: /Monitoramento/ })[0],
     ).toHaveAttribute("href", "/dashboard");
     expect(screen.getAllByRole("link", { name: /Sinais/ })[0]).toHaveAttribute(
       "href",
@@ -320,7 +320,7 @@ describe("DashboardPage", () => {
       screen.queryByRole("columnheader", { name: "MME42" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Inspecionar PETR4" }),
+      screen.getByRole("link", { name: "Ver gráficos de PETR4" }),
     ).toHaveAttribute("href", "/dashboard/tickers/PETR4");
     expect(
       screen.queryByRole("columnheader", { name: "Detalhes" }),
@@ -419,26 +419,37 @@ describe("TickerPage", () => {
     });
     expect(listPriceSnapshotsForSymbolMock).toHaveBeenCalledWith("PETR4");
     expect(listIndicatorSnapshotsForSymbolMock).toHaveBeenCalledWith("PETR4");
-    expect(screen.getByRole("heading", { name: "PETR4" })).toBeInTheDocument();
     expect(
-      screen.getByRole("navigation", { name: "Trilha de navegação" }),
-    ).toHaveTextContent("DashboardAtivosPETR4");
-    expect(
-      screen
-        .getByRole("navigation", { name: "Trilha de navegação" })
-        .querySelector('a[href="/dashboard"]'),
-    ).toHaveTextContent("Dashboard");
-    expect(screen.getByText("PETR4", { selector: "span" })).toHaveAttribute(
-      "aria-current",
-      "page",
+      screen.getByRole("heading", { name: "Detalhes de PETR4" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Voltar" })).toHaveAttribute(
+      "href",
+      "/dashboard",
     );
-    expect(screen.getByText("Preços de fechamento")).toBeInTheDocument();
-    expect(screen.getByText("Dados do gráfico MME")).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "MME6" })).toBeVisible();
-    expect(screen.getByRole("columnheader", { name: "MME13" })).toBeVisible();
-    expect(screen.getByRole("columnheader", { name: "MME42" })).toBeVisible();
-    expect(screen.getByText("Snapshots brutos")).toBeInTheDocument();
-    expect(screen.getAllByText(/31,10/).length).toBeGreaterThan(1);
+    expect(screen.getByText("Último preço")).toBeInTheDocument();
+    expect(screen.getByText("Última atualização")).toBeInTheDocument();
+    expect(screen.getByText("MME6")).toBeInTheDocument();
+    expect(screen.getByText("MME13")).toBeInTheDocument();
+    expect(screen.getByText("MME42")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Dados insuficientes" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Manter")).toBeInTheDocument();
+    expect(screen.queryByText("Abertura")).toBeNull();
+    expect(screen.queryByText("Volume")).toBeNull();
+    expect(screen.getByText("Médias móveis exponenciais")).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", {
+        name: "Gráfico de linhas das médias móveis exponenciais",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Oscilação de preços")).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", {
+        name: "Gráfico de candles da oscilação de preços",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /atualizar/i })).toBeNull();
   });
 
   it("renders not found when the ticker is outside the current profile watchlist", async () => {
@@ -462,7 +473,13 @@ describe("SignalsPage", () => {
     createDrizzleSignalRepositoryMock.mockReturnValue({
       type: "signal-repository",
     });
+    createDrizzleWatchlistRepositoryMock.mockReset();
+    createDrizzleWatchlistRepositoryMock.mockReturnValue({
+      type: "watchlist-repository",
+    });
     listSignalsForProfileMock.mockReset();
+    listWatchlistItemsForProfileMock.mockReset();
+    listWatchlistItemsForProfileMock.mockResolvedValue([]);
     redirectMock.mockClear();
     requireCurrentProfileMock.mockReset();
   });
@@ -501,10 +518,24 @@ describe("SignalsPage", () => {
       { signalRepository: { type: "signal-repository" } },
     );
     expect(screen.getByText("PETR4")).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Ícone" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Data" }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Compra técnica")).toHaveLength(2);
     expect(screen.getByText("02/01/2026")).toBeInTheDocument();
-    expect(screen.getByText("MME6 > MME42")).toBeInTheDocument();
-    expect(screen.getByText("MME6 > MME13 > MME42")).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole("cell")
+        .some((cell) => cell.textContent === "MME6 > MME42"),
+    ).toBe(true);
+    expect(
+      screen
+        .getAllByRole("cell")
+        .some((cell) => cell.textContent === "MME6 > MME13 > MME42"),
+    ).toBe(true);
   });
 
   it("renders an empty state for profiles without signals", async () => {
