@@ -69,10 +69,6 @@ vi.mock(
   }),
 );
 
-vi.mock("@/features/market-data/server/market-data.actions", () => ({
-  refreshWatchlistItemMarketData: vi.fn(),
-}));
-
 vi.mock("@/features/signals/application/manage-signals", () => ({
   listSignalsForProfile: listSignalsForProfileMock,
 }));

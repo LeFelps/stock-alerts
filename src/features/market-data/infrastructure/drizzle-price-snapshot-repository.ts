@@ -1,4 +1,4 @@
-import { desc, eq, inArray, max, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { priceSnapshots } from "@/db/schema";
@@ -12,26 +12,6 @@ export function createDrizzlePriceSnapshotRepository(
   database: Database = db,
 ): PriceSnapshotRepository {
   return {
-    async latestMarketDatesBySymbol(symbols) {
-      const rows = await database
-        .select({
-          latestMarketDate: max(priceSnapshots.marketDate),
-          symbol: priceSnapshots.symbol,
-        })
-        .from(priceSnapshots)
-        .where(inArray(priceSnapshots.symbol, symbols))
-        .groupBy(priceSnapshots.symbol)
-        .orderBy(desc(sql`max(${priceSnapshots.marketDate})`));
-
-      return new Map(
-        rows.flatMap((row) =>
-          row.latestMarketDate
-            ? [[row.symbol, row.latestMarketDate] as const]
-            : [],
-        ),
-      );
-    },
-
     async listForSymbol(symbol, limit = 120) {
       const rows = await database
         .select()

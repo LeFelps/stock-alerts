@@ -2,52 +2,52 @@ import type {
   AlertEmailDelivery,
   AlertEmailDeliveryId,
   AlertEmailSkippedReason,
-  BuySignalAlertEmail,
+  BuySignalDigestEmail,
   EmailDeliveryProviderName,
 } from "../domain/email-delivery";
 import type { SignalId } from "@/features/signals/domain/signal";
 
-export type ReserveAlertEmailDeliveryCommand = {
+export type ReserveAlertEmailDeliveriesCommand = {
   provider: EmailDeliveryProviderName;
   recipientEmail: string;
-  signalId: SignalId;
+  signalIds: SignalId[];
 };
 
-export type CreateSkippedAlertEmailDeliveryCommand = {
+export type CreateSkippedAlertEmailDeliveriesCommand = {
   recipientEmail: string;
-  signalId: SignalId;
+  signalIds: SignalId[];
   skippedReason: AlertEmailSkippedReason;
 };
 
-export type MarkAlertEmailDeliverySentCommand = {
-  deliveryId: AlertEmailDeliveryId;
+export type MarkAlertEmailDeliveriesSentCommand = {
+  deliveryIds: AlertEmailDeliveryId[];
   providerMessageId?: string;
   sentAt: Date;
 };
 
-export type MarkAlertEmailDeliveryFailedCommand = {
-  deliveryId: AlertEmailDeliveryId;
+export type MarkAlertEmailDeliveriesFailedCommand = {
+  deliveryIds: AlertEmailDeliveryId[];
   providerError: string;
 };
 
 export type AlertEmailDeliveryRepository = {
-  createSkipped(
-    command: CreateSkippedAlertEmailDeliveryCommand,
-  ): Promise<AlertEmailDelivery | null>;
-  markFailed(
-    command: MarkAlertEmailDeliveryFailedCommand,
-  ): Promise<AlertEmailDelivery>;
-  markSent(
-    command: MarkAlertEmailDeliverySentCommand,
-  ): Promise<AlertEmailDelivery>;
-  reserve(
-    command: ReserveAlertEmailDeliveryCommand,
-  ): Promise<AlertEmailDelivery | null>;
+  createSkippedMany(
+    command: CreateSkippedAlertEmailDeliveriesCommand,
+  ): Promise<AlertEmailDelivery[]>;
+  markFailedMany(
+    command: MarkAlertEmailDeliveriesFailedCommand,
+  ): Promise<AlertEmailDelivery[]>;
+  markSentMany(
+    command: MarkAlertEmailDeliveriesSentCommand,
+  ): Promise<AlertEmailDelivery[]>;
+  reserveMany(
+    command: ReserveAlertEmailDeliveriesCommand,
+  ): Promise<AlertEmailDelivery[]>;
 };
 
 export type EmailDeliveryProvider = {
   name: EmailDeliveryProviderName;
-  sendBuySignalAlert(
-    email: BuySignalAlertEmail,
+  sendBuySignalDigest(
+    email: BuySignalDigestEmail,
   ): Promise<{ providerMessageId?: string }>;
 };

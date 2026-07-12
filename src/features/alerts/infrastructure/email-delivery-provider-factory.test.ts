@@ -11,7 +11,7 @@ describe("email delivery provider factory", () => {
     });
 
     expect(provider).toHaveProperty("name", "ses");
-    expect(provider).toHaveProperty("sendBuySignalAlert");
+    expect(provider).toHaveProperty("sendBuySignalDigest");
   });
 
   it("defaults to SES but requires the sender address", () => {
