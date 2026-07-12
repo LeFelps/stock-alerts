@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
@@ -45,35 +45,26 @@ export default async function TickerPage({
   ]);
 
   return (
-    <>
-      <nav aria-label="Trilha de navegação">
-        <ol className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <li>
-            <Link className="hover:text-foreground" href="/dashboard">
-              Dashboard
-            </Link>
-          </li>
-          <li className="flex items-center gap-2">
-            <ChevronRight aria-hidden="true" className="size-4" />
-            <span>Ativos</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <ChevronRight aria-hidden="true" className="size-4" />
-            <span aria-current="page">{symbol}</span>
-          </li>
-        </ol>
-      </nav>
-      <section className="grid gap-6">
+    <section className="grid gap-8">
+      <div className="grid gap-3">
+        <Link
+          className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          href="/dashboard"
+        >
+          <ArrowLeft aria-hidden="true" className="size-4" />
+          Voltar
+        </Link>
         <SectionHeader
-          title="Detalhe do Ativo"
-          description="Histórico de preços, médias móveis exponenciais e payloads brutos salvos para depuração."
+          title={`Detalhes de ${symbol}`}
+          description="Histórico de preços, médias móveis exponenciais e dados brutos salvos para depuração."
         />
+      </div>
+      <div className="grid gap-6">
         <TickerDetail
           indicatorSnapshots={indicatorSnapshots}
           priceSnapshots={priceSnapshots}
-          watchlistItem={watchlistItem}
         />
-      </section>
-    </>
+      </div>
+    </section>
   );
 }

@@ -48,7 +48,7 @@ function buildTextBody({ signal }: BuySignalAlertEmail) {
     `Um sinal técnico de compra foi registrado para ${signal.symbol}.`,
     "",
     `Ativo: ${signal.symbol}`,
-    `Pregão: ${formatMarketDate(signal.marketDate)}`,
+    `Data: ${formatMarketDate(signal.marketDate)}`,
     `Motivo técnico: ${formatSignalReason(signal.reason)}`,
     "",
     "Este alerta é gerado mecanicamente por regras técnicas configuradas no app e não constitui recomendação de investimento.",

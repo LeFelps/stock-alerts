@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Eye } from "lucide-react";
+import { ChartNoAxesCombined } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -105,17 +105,17 @@ const marketColumns: ColumnDef<MarketOverviewItem>[] = [
       <div className="text-right">
         <Button asChild size="icon-sm" variant="outline">
           <Link
-            aria-label={`Inspecionar ${row.original.watchlistItem.symbol}`}
+            aria-label={`Ver gráficos de ${row.original.watchlistItem.symbol}`}
             href={`/dashboard/tickers/${row.original.watchlistItem.symbol}`}
-            title={`Inspecionar ${row.original.watchlistItem.symbol}`}
+            title={`Ver gráficos de ${row.original.watchlistItem.symbol}`}
           >
-            <Eye aria-hidden="true" className="size-4" />
+            <ChartNoAxesCombined aria-hidden="true" className="size-4" />
           </Link>
         </Button>
       </div>
     ),
     enableHiding: false,
-    header: () => <span className="sr-only">Inspecionar</span>,
+    header: () => <span className="sr-only">Gráficos</span>,
     id: "actions",
   },
 ];

@@ -1,9 +1,9 @@
 "use client";
 
 import {
+  Activity,
   Bell,
   Clock3,
-  LineChart,
   Settings,
   SlidersHorizontal,
   type LucideIcon,
@@ -31,8 +31,8 @@ type DashboardNavItem = {
 const navItems: DashboardNavItem[] = [
   {
     href: "/dashboard",
-    icon: LineChart,
-    label: "Dashboard",
+    icon: Activity,
+    label: "Monitoramento",
     section: "overview",
   },
   {
