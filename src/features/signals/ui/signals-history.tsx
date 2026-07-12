@@ -1,5 +1,9 @@
+"use client";
+
+import type { ColumnDef } from "@tanstack/react-table";
+
 import { Badge } from "@/components/ui/badge";
-import { Table } from "@/components/ui/table";
+import { DataTable } from "@/components/ui/data-table";
 import { formatHumanDate, formatHumanDateTime } from "@/lib/format-date";
 
 import type { Signal } from "../domain/signal";
@@ -18,36 +22,56 @@ export function SignalsHistory({ signals }: { signals: Signal[] }) {
   }
 
   return (
-    <Table>
-      <thead className="text-muted-foreground">
-        <tr>
-          <th className="border-b px-3 py-3 font-medium">Ativo</th>
-          <th className="border-b px-3 py-3 font-medium">Tipo</th>
-          <th className="border-b px-3 py-3 font-medium">Pregão</th>
-          <th className="border-b px-3 py-3 font-medium">Motivo técnico</th>
-          <th className="border-b px-3 py-3 font-medium">Registrado em</th>
-        </tr>
-      </thead>
-      <tbody>
-        {signals.map((signal) => (
-          <tr key={signal.id}>
-            <td className="border-b px-3 py-3 font-medium">{signal.symbol}</td>
-            <td className="border-b px-3 py-3">
-              <Badge variant="secondary">{formatSignalType(signal)}</Badge>
-            </td>
-            <td className="border-b px-3 py-3">
-              {formatHumanDate(signal.marketDate)}
-            </td>
-            <td className="border-b px-3 py-3">{formatSignalReason(signal)}</td>
-            <td className="border-b px-3 py-3">
-              {formatHumanDateTime(signal.createdAt)}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </Table>
+    <DataTable
+      columnLabels={signalColumnLabels}
+      columns={signalColumns}
+      data={signals}
+      getRowId={(signal) => signal.id}
+      searchPlaceholder="Buscar sinais…"
+    />
   );
 }
+
+const signalColumns: ColumnDef<Signal>[] = [
+  {
+    accessorKey: "symbol",
+    cell: ({ row }) => (
+      <span className="font-medium">{row.original.symbol}</span>
+    ),
+    header: "Ativo",
+  },
+  {
+    accessorFn: formatSignalType,
+    cell: ({ row }) => (
+      <Badge variant="secondary">{formatSignalType(row.original)}</Badge>
+    ),
+    header: "Tipo",
+    id: "type",
+  },
+  {
+    accessorFn: (signal) => formatHumanDate(signal.marketDate),
+    header: "Pregão",
+    id: "marketDate",
+  },
+  {
+    accessorFn: formatSignalReason,
+    header: "Motivo técnico",
+    id: "reason",
+  },
+  {
+    accessorFn: (signal) => formatHumanDateTime(signal.createdAt),
+    header: "Registrado em",
+    id: "createdAt",
+  },
+];
+
+const signalColumnLabels = {
+  createdAt: "Registrado em",
+  marketDate: "Pregão",
+  reason: "Motivo técnico",
+  symbol: "Ativo",
+  type: "Tipo",
+};
 
 function formatSignalType(signal: Signal) {
   return signal.signalType === "BUY" ? "Compra técnica" : signal.signalType;

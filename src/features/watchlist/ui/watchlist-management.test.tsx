@@ -14,7 +14,6 @@ import { WatchlistManagement } from "./watchlist-management";
 
 const createWatchlistItemMock = vi.hoisted(() => vi.fn());
 const deleteWatchlistItemMock = vi.hoisted(() => vi.fn());
-const refreshWatchlistItemMarketDataMock = vi.hoisted(() => vi.fn());
 const setWatchlistItemEnabledMock = vi.hoisted(() => vi.fn());
 const toastErrorMock = vi.hoisted(() => vi.fn());
 const toastSuccessMock = vi.hoisted(() => vi.fn());
@@ -27,10 +26,6 @@ vi.mock("../server/watchlist.actions", () => ({
   updateWatchlistItem: updateWatchlistItemMock,
 }));
 
-vi.mock("@/features/market-data/server/market-data.actions", () => ({
-  refreshWatchlistItemMarketData: refreshWatchlistItemMarketDataMock,
-}));
-
 vi.mock("sonner", () => ({
   toast: { error: toastErrorMock, success: toastSuccessMock },
 }));
@@ -39,7 +34,6 @@ describe("WatchlistManagement optimistic actions", () => {
   beforeEach(() => {
     createWatchlistItemMock.mockReset();
     deleteWatchlistItemMock.mockReset();
-    refreshWatchlistItemMarketDataMock.mockReset();
     setWatchlistItemEnabledMock.mockReset();
     toastErrorMock.mockReset();
     toastSuccessMock.mockReset();
@@ -49,9 +43,7 @@ describe("WatchlistManagement optimistic actions", () => {
   it("keeps the form pending without projecting a row and appends the resolved item", async () => {
     const request = deferred<ReturnType<typeof successItem>>();
     createWatchlistItemMock.mockReturnValue(request.promise);
-    const { container } = render(
-      <WatchlistManagement items={[]} referenceDate="2026-01-02" />,
-    );
+    const { container } = render(<WatchlistManagement items={[]} />);
 
     fireEvent.change(screen.getByLabelText("Código"), {
       target: { value: " pe tr4 " },
@@ -86,7 +78,7 @@ describe("WatchlistManagement optimistic actions", () => {
   it("preserves form values and explains an invalid symbol", async () => {
     const request = deferred<{ error: "invalid_symbol"; status: "error" }>();
     createWatchlistItemMock.mockReturnValue(request.promise);
-    render(<WatchlistManagement items={[]} referenceDate="2026-01-02" />);
+    render(<WatchlistManagement items={[]} />);
 
     const symbol = screen.getByLabelText("Código") as HTMLInputElement;
     fireEvent.change(symbol, { target: { value: "FAKE4" } });
@@ -108,7 +100,7 @@ describe("WatchlistManagement optimistic actions", () => {
       error: "provider_error",
       status: "error",
     });
-    render(<WatchlistManagement items={[]} referenceDate="2026-01-02" />);
+    render(<WatchlistManagement items={[]} />);
 
     fireEvent.change(screen.getByLabelText("Código"), {
       target: { value: "PETR4" },
@@ -124,12 +116,7 @@ describe("WatchlistManagement optimistic actions", () => {
 
   it("renders the symbol when a legacy item has no long name", () => {
     const item = successItem().data;
-    render(
-      <WatchlistManagement
-        items={[{ ...item, latestMarketDate: null, longName: null }]}
-        referenceDate="2026-01-02"
-      />,
-    );
+    render(<WatchlistManagement items={[{ ...item, longName: null }]} />);
 
     expect(screen.getAllByText("PETR4")).toHaveLength(2);
   });

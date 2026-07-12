@@ -1,5 +1,6 @@
 "use client";
 
+import type { ColumnDef } from "@tanstack/react-table";
 import {
   LoaderCircle,
   MessageSquareText,
@@ -7,16 +8,15 @@ import {
   Pencil,
   Play,
   Plus,
-  RefreshCw,
   Save,
   Trash2,
 } from "lucide-react";
-import Image from "next/image";
 import { startTransition, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/ui/data-table";
 import {
   Dialog,
   DialogClose,
@@ -32,12 +32,10 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { Table } from "@/components/ui/table";
-import { refreshWatchlistItemMarketData } from "@/features/market-data/server/market-data.actions";
 import type { ActionError } from "@/lib/action-result";
-import { formatHumanDate } from "@/lib/format-date";
 
 import type { WatchlistItem } from "../domain/watchlist-item";
+import { AssetLogo } from "./asset-logo";
 import {
   createWatchlistItem,
   deleteWatchlistItem,
@@ -50,20 +48,10 @@ const fieldClassName =
 const textareaClassName =
   "min-h-10 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
 
-export type WatchlistManagementItem = WatchlistItem & {
-  latestMarketDate: string | null;
-};
+type OptimisticItem = Omit<WatchlistItem, "id"> & { id: string };
+type ItemOperation = "delete" | "edit" | "toggle";
 
-type OptimisticItem = Omit<WatchlistManagementItem, "id"> & { id: string };
-type ItemOperation = "delete" | "edit" | "refresh" | "toggle";
-
-export function WatchlistManagement({
-  items,
-  referenceDate,
-}: {
-  items: WatchlistManagementItem[];
-  referenceDate: string;
-}) {
+export function WatchlistManagement({ items }: { items: WatchlistItem[] }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [rows, setRows] = useState<OptimisticItem[]>(items);
   const [adding, setAdding] = useState(false);
@@ -95,10 +83,7 @@ export function WatchlistManagement({
           return;
         }
 
-        setRows((current) => [
-          ...current,
-          { ...result.data, latestMarketDate: null },
-        ]);
+        setRows((current) => [...current, result.data]);
         formRef.current?.reset();
         toast.success(
           `${result.data.symbol} foi adicionado à Lista de acompanhamento.`,
@@ -135,11 +120,7 @@ export function WatchlistManagement({
         }
 
         setRows((current) =>
-          current.map((row) =>
-            row.id === item.id
-              ? { ...result.data, latestMarketDate: row.latestMarketDate }
-              : row,
-          ),
+          current.map((row) => (row.id === item.id ? result.data : row)),
         );
         toast.success(`Alterações de ${result.data.symbol} foram salvas.`);
       } catch {
@@ -176,11 +157,7 @@ export function WatchlistManagement({
         }
 
         setRows((current) =>
-          current.map((row) =>
-            row.id === item.id
-              ? { ...result.data, latestMarketDate: row.latestMarketDate }
-              : row,
-          ),
+          current.map((row) => (row.id === item.id ? result.data : row)),
         );
         toast.success(
           `${result.data.symbol} foi ${enabled ? "ativado" : "pausado"}.`,
@@ -227,27 +204,12 @@ export function WatchlistManagement({
     });
   }
 
-  function submitRefresh(item: OptimisticItem) {
-    if (operations[item.id]) return;
-    setOperation(item.id, "refresh");
-
-    startTransition(async () => {
-      try {
-        const result = await refreshWatchlistItemMarketData(item.id);
-        if (result.status === "error") {
-          toast.error(actionErrorMessage(result.error, item.symbol));
-          return;
-        }
-        toast.success(`Dados de ${item.symbol} foram atualizados.`);
-      } catch {
-        toast.error(
-          `Não foi possível atualizar os dados de ${item.symbol}. Tente novamente.`,
-        );
-      } finally {
-        setOperation(item.id);
-      }
-    });
-  }
+  const columns = createWatchlistColumns({
+    onDelete: submitDelete,
+    onEdit: submitEdit,
+    onToggle: submitToggle,
+    operations,
+  });
 
   return (
     <div className="grid gap-8">
@@ -299,178 +261,140 @@ export function WatchlistManagement({
           </p>
         </div>
       ) : (
-        <Table>
-          <thead className="text-muted-foreground">
-            <tr>
-              <th className="w-12 border-b px-3 py-3 font-medium">
-                <span className="sr-only">Logo</span>
-              </th>
-              <th className="border-b px-3 py-3 font-medium">Código</th>
-              <th className="border-b px-3 py-3 font-medium">Nome</th>
-              <th className="border-b px-3 py-3 font-medium">Observações</th>
-              <th className="border-b px-3 py-3 font-medium">
-                Dados de mercado
-              </th>
-              <th className="border-b px-3 py-3 font-medium">Status</th>
-              <th className="border-b px-3 py-3 text-right font-medium">
-                Ações
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((item) => (
-              <WatchlistRow
-                item={item}
-                key={item.id}
-                onDelete={submitDelete}
-                onEdit={submitEdit}
-                onRefresh={submitRefresh}
-                onToggle={submitToggle}
-                operation={operations[item.id]}
-                referenceDate={referenceDate}
-              />
-            ))}
-          </tbody>
-        </Table>
+        <DataTable
+          columnLabels={watchlistColumnLabels}
+          columns={columns}
+          data={rows}
+          getRowId={(item) => item.id}
+          searchPlaceholder="Buscar ativos…"
+        />
       )}
     </div>
   );
 }
 
-function WatchlistRow({
-  item,
-  onDelete,
-  onEdit,
-  onRefresh,
-  onToggle,
-  operation,
-  referenceDate,
-}: {
-  item: OptimisticItem;
+type WatchlistColumnDependencies = {
   onDelete: (item: OptimisticItem) => void;
   onEdit: (item: OptimisticItem, draft: WatchlistEditFields) => void;
-  onRefresh: (item: OptimisticItem) => void;
   onToggle: (item: OptimisticItem) => void;
-  operation?: ItemOperation;
-  referenceDate: string;
-}) {
-  const disabled = Boolean(operation);
+  operations: Record<string, ItemOperation>;
+};
 
-  return (
-    <tr aria-busy={disabled || undefined}>
-      <td className="w-12 border-b px-3 py-3">
-        <AssetLogo item={item} />
-      </td>
-      <td className="border-b px-3 py-3 font-medium">{item.symbol}</td>
-      <td className="max-w-64 border-b px-3 py-3">
+function createWatchlistColumns({
+  onDelete,
+  onEdit,
+  onToggle,
+  operations,
+}: WatchlistColumnDependencies): ColumnDef<OptimisticItem>[] {
+  return [
+    {
+      cell: ({ row }) => <AssetLogo item={row.original} />,
+      enableHiding: false,
+      header: "Ícone",
+      id: "icon",
+    },
+    {
+      accessorKey: "symbol",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.symbol}</span>
+      ),
+      header: "Código",
+    },
+    {
+      accessorFn: (item) => item.longName ?? item.symbol,
+      cell: ({ row }) => (
         <span
           className="block max-w-64 truncate"
-          title={item.longName ?? item.symbol}
+          title={row.original.longName ?? row.original.symbol}
         >
-          {item.longName ?? item.symbol}
+          {row.original.longName ?? row.original.symbol}
         </span>
-      </td>
-      <td className="border-b px-3 py-3 align-top">
-        <ObservationHoverCard notes={item.notes} symbol={item.symbol} />
-      </td>
-      <td className="border-b px-3 py-3 align-top">
-        <div className="grid gap-1">
-          <span className="text-sm font-medium">
-            {item.latestMarketDate
-              ? formatHumanDate(item.latestMarketDate, referenceDate)
-              : "Sem dados"}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            Última atualização
-          </span>
+      ),
+      header: "Nome",
+      id: "name",
+    },
+    {
+      accessorFn: (item) => item.notes ?? "Sem observações",
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ObservationHoverCard
+            notes={row.original.notes}
+            symbol={row.original.symbol}
+          />
         </div>
-      </td>
-      <td className="border-b px-3 py-3 align-top">
-        <Badge variant={item.enabled ? "default" : "secondary"}>
-          {item.enabled ? "Ativo" : "Pausado"}
-        </Badge>
-      </td>
-      <td className="border-b px-3 py-3 align-top">
-        <div className="flex justify-end gap-2">
-          <Button
-            aria-busy={operation === "refresh"}
-            disabled={disabled}
-            onClick={() => onRefresh(item)}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <RefreshCw
-              aria-hidden="true"
-              className={
-                operation === "refresh" ? "size-4 animate-spin" : "size-4"
-              }
+      ),
+      header: () => <div className="text-center">Observações</div>,
+      id: "notes",
+    },
+    {
+      accessorFn: (item) => (item.enabled ? "Ativo" : "Pausado"),
+      cell: ({ row }) => (
+        <div className="text-center">
+          <Badge variant={row.original.enabled ? "default" : "secondary"}>
+            {row.original.enabled ? "Ativo" : "Pausado"}
+          </Badge>
+        </div>
+      ),
+      header: () => <div className="text-center">Status</div>,
+      id: "status",
+    },
+    {
+      cell: ({ row }) => {
+        const item = row.original;
+        const operation = operations[item.id];
+        const disabled = Boolean(operation);
+        return (
+          <div className="flex justify-end gap-2">
+            <EditWatchlistItemDialog
+              disabled={disabled}
+              item={item}
+              onSubmit={onEdit}
+              pending={operation === "edit"}
             />
-            {operation === "refresh" ? "Atualizando…" : "Atualizar"}
-          </Button>
-          <EditWatchlistItemDialog
-            disabled={disabled}
-            item={item}
-            onSubmit={onEdit}
-            pending={operation === "edit"}
-          />
-          <Button
-            disabled={disabled}
-            onClick={() => onToggle(item)}
-            size="sm"
-            type="button"
-            variant="secondary"
-          >
-            {operation === "toggle" ? (
-              <LoaderCircle
-                aria-hidden="true"
-                className="size-4 animate-spin"
-              />
-            ) : item.enabled ? (
-              <Pause aria-hidden="true" className="size-4" />
-            ) : (
-              <Play aria-hidden="true" className="size-4" />
-            )}
-            {operation === "toggle"
-              ? "Salvando…"
-              : item.enabled
-                ? "Pausar"
-                : "Ativar"}
-          </Button>
-          <DeleteWatchlistItemDialog
-            disabled={disabled}
-            item={item}
-            onConfirm={onDelete}
-          />
-        </div>
-      </td>
-    </tr>
-  );
+            <Button
+              disabled={disabled}
+              onClick={() => onToggle(item)}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              {operation === "toggle" ? (
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="size-4 animate-spin"
+                />
+              ) : item.enabled ? (
+                <Pause aria-hidden="true" className="size-4" />
+              ) : (
+                <Play aria-hidden="true" className="size-4" />
+              )}
+              {operation === "toggle"
+                ? "Salvando…"
+                : item.enabled
+                  ? "Pausar"
+                  : "Ativar"}
+            </Button>
+            <DeleteWatchlistItemDialog
+              disabled={disabled}
+              item={item}
+              onConfirm={onDelete}
+            />
+          </div>
+        );
+      },
+      enableHiding: false,
+      header: () => <div className="text-right">Ações</div>,
+      id: "actions",
+    },
+  ];
 }
 
-function AssetLogo({ item }: { item: OptimisticItem }) {
-  if (!item.logoUrl) {
-    return (
-      <span
-        aria-hidden="true"
-        className="flex size-8 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground"
-      >
-        {item.symbol.slice(0, 1)}
-      </span>
-    );
-  }
-
-  return (
-    <Image
-      alt=""
-      className="size-8 rounded-md object-contain"
-      height={32}
-      src={item.logoUrl}
-      unoptimized
-      width={32}
-    />
-  );
-}
+const watchlistColumnLabels = {
+  name: "Nome",
+  notes: "Observações",
+  status: "Status",
+  symbol: "Código",
+};
 
 function DeleteWatchlistItemDialog({
   disabled,
