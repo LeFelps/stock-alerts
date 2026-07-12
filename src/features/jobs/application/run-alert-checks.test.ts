@@ -298,6 +298,60 @@ describe("runAlertChecks", () => {
         summary: expect.objectContaining({ failedEmails: 1, sentEmails: 1 }),
       }),
     );
+    expect(
+      deps.alertCheckCheckpointRepository.markProcessed,
+    ).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries persisted eligible signals when digest reservation fails before checkpointing", async () => {
+    const deps = createDependencies();
+    const signal = createSignal("signal-1", "profile-1", "PETR4");
+    vi.mocked(
+      deps.alertCheckTargetRepository.listEnabledTargets,
+    ).mockResolvedValue([createTarget("profile-1", "PETR4")]);
+    vi.mocked(deps.marketDataProvider.fetchDailyPrices).mockResolvedValue(
+      createSnapshots("2026-07-13", "PETR4"),
+    );
+    vi.mocked(deps.signalRepository.upsertMany)
+      .mockResolvedValueOnce([signal])
+      .mockResolvedValueOnce([]);
+    vi.mocked(deps.signalRepository.findMatching).mockResolvedValue([signal]);
+    vi.mocked(
+      deps.alertEmailDeliveryRepository.reserveMany,
+    ).mockRejectedValueOnce(new Error("Database unavailable"));
+
+    const failedAttempt = await runAlertChecks({}, deps);
+
+    expect(failedAttempt.ok).toBe(false);
+    expect(
+      deps.alertCheckCheckpointRepository.markProcessed,
+    ).not.toHaveBeenCalled();
+    expect(
+      deps.emailDeliveryProvider.sendBuySignalDigest,
+    ).not.toHaveBeenCalled();
+
+    const retry = await runAlertChecks({}, deps);
+
+    expect(retry.ok).toBe(true);
+    expect(deps.signalRepository.findMatching).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          marketDate: "2026-07-13",
+          profileId: "profile-1",
+          symbol: "PETR4",
+        }),
+      ]),
+    );
+    expect(deps.emailDeliveryProvider.sendBuySignalDigest).toHaveBeenCalledWith(
+      expect.objectContaining({ signals: [signal] }),
+    );
+    expect(
+      deps.alertCheckCheckpointRepository.markProcessed,
+    ).toHaveBeenCalledWith({
+      marketDate: "2026-07-13",
+      profileId: "profile-1",
+      symbol: "PETR4",
+    });
   });
 });
 
@@ -362,6 +416,7 @@ function createDependencies() {
       upsertMany: vi.fn(),
     } satisfies PriceSnapshotRepository,
     signalRepository: {
+      findMatching: vi.fn(),
       listForProfile: vi.fn(),
       upsertMany: vi.fn(),
     } satisfies SignalRepository,
@@ -425,7 +480,7 @@ function createSnapshots(latestMarketDate: string, symbol: string) {
   return Array.from({ length: 43 }, (_, index) => {
     const date = new Date(latest);
     date.setUTCDate(latest.getUTCDate() - (42 - index));
-    const close = index < 42 ? 100 : 120;
+    const close = index < 29 ? 150 : index < 36 ? 100 : index < 42 ? 125 : 220;
 
     return {
       adjustedClose: close,
