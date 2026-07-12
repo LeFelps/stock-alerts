@@ -6,6 +6,7 @@ import PreferencesPage from "./dashboard/preferences/page";
 import SignalsPage from "./dashboard/signals/page";
 import SettingsPage from "./dashboard/settings/page";
 import TickerPage from "./dashboard/tickers/[symbol]/page";
+import DashboardLayout from "./dashboard/layout";
 import DashboardPage from "./dashboard/page";
 import Home from "./page";
 
@@ -113,6 +114,7 @@ vi.mock(
 vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
   redirect: redirectMock,
+  usePathname: () => "/dashboard",
 }));
 
 describe("Home", () => {
@@ -205,7 +207,11 @@ describe("DashboardPage", () => {
       profile: createProfile({ emailAlertsEnabled: true }),
     });
 
-    render(await DashboardPage());
+    render(
+      await DashboardLayout({
+        children: await DashboardPage(),
+      }),
+    );
 
     expect(screen.getByRole("heading", { name: "Painel" })).toBeInTheDocument();
     expect(screen.getByText("Painel protegido")).toBeInTheDocument();
@@ -248,7 +254,11 @@ describe("DashboardPage", () => {
       profile: createProfile({ emailAlertsEnabled: true }),
     });
 
-    render(await DashboardPage());
+    render(
+      await DashboardLayout({
+        children: await DashboardPage(),
+      }),
+    );
     const toggle = screen.getByRole("button", { name: "Abrir navegação" });
     const toggleIcon = toggle.querySelector("svg");
 
@@ -592,7 +602,9 @@ describe("JobsPage", () => {
   it("redirects signed-out users to the sign-in page", async () => {
     requireCurrentProfileMock.mockRejectedValue(new Error("NEXT_REDIRECT:/"));
 
-    await expect(JobsPage()).rejects.toThrow("NEXT_REDIRECT:/");
+    await expect(DashboardLayout({ children: null })).rejects.toThrow(
+      "NEXT_REDIRECT:/",
+    );
     expect(listRecentJobRunsMock).not.toHaveBeenCalled();
   });
 });

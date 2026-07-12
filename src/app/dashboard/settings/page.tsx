@@ -1,7 +1,4 @@
-import {
-  DashboardShell,
-  SectionHeader,
-} from "@/app/dashboard/_components/dashboard-shell";
+import { SectionHeader } from "@/app/dashboard/_components/dashboard-shell";
 import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
 import { listLatestMarketDataDatesForSymbols } from "@/features/market-data/application/refresh-market-data";
 import { createDrizzlePriceSnapshotRepository } from "@/features/market-data/infrastructure/drizzle-price-snapshot-repository";
@@ -22,23 +19,24 @@ export default async function SettingsPage() {
   );
 
   return (
-    <DashboardShell activeSection="settings" userEmail={currentProfile.email}>
-      <section className="grid gap-6">
-        <SectionHeader
-          title="Configurações"
-          description="Adicione e gerencie os Ativos da sua Lista de acompanhamento."
-        />
-        <WatchlistManagement
-          items={watchlistItems.map((item) => ({
-            ...item,
-            latestMarketDate: latestMarketDates.get(item.symbol) ?? null,
-          }))}
-          referenceDate={formatCalendarDateInTimeZone(
-            new Date(),
-            "America/Sao_Paulo",
-          )}
-        />
-      </section>
-    </DashboardShell>
+    <section className="grid gap-6">
+      <SectionHeader
+        title="Configurações"
+        description="Adicione e gerencie os Ativos da sua Lista de acompanhamento."
+      />
+      <WatchlistManagement
+        key={watchlistItems
+          .map((item) => `${item.id}:${item.updatedAt.toISOString()}`)
+          .join("|")}
+        items={watchlistItems.map((item) => ({
+          ...item,
+          latestMarketDate: latestMarketDates.get(item.symbol) ?? null,
+        }))}
+        referenceDate={formatCalendarDateInTimeZone(
+          new Date(),
+          "America/Sao_Paulo",
+        )}
+      />
+    </section>
   );
 }

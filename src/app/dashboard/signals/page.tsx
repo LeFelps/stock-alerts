@@ -1,7 +1,4 @@
-import {
-  DashboardShell,
-  SectionHeader,
-} from "@/app/dashboard/_components/dashboard-shell";
+import { SectionHeader } from "@/app/dashboard/_components/dashboard-shell";
 import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
 import { listSignalsForProfile } from "@/features/signals/application/manage-signals";
 import { createDrizzleSignalRepository } from "@/features/signals/infrastructure/drizzle-signal-repository";
@@ -15,14 +12,12 @@ export default async function SignalsPage() {
   );
 
   return (
-    <DashboardShell activeSection="signals" userEmail={currentProfile.email}>
-      <section className="grid gap-6">
-        <SectionHeader
-          title="Sinais"
-          description="Histórico de sinais técnicos gerados a partir das médias móveis salvas para o Perfil."
-        />
-        <SignalsHistory signals={signals} />
-      </section>
-    </DashboardShell>
+    <section className="grid gap-6">
+      <SectionHeader
+        title="Sinais"
+        description="Histórico de sinais técnicos gerados a partir das médias móveis salvas para o Perfil."
+      />
+      <SignalsHistory signals={signals} />
+    </section>
   );
 }

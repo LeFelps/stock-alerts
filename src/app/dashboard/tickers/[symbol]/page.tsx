@@ -1,10 +1,9 @@
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
-import {
-  DashboardShell,
-  SectionHeader,
-} from "@/app/dashboard/_components/dashboard-shell";
+import { SectionHeader } from "@/app/dashboard/_components/dashboard-shell";
 import { createDrizzleIndicatorSnapshotRepository } from "@/features/indicators/infrastructure/drizzle-indicator-snapshot-repository";
 import { createDrizzlePriceSnapshotRepository } from "@/features/market-data/infrastructure/drizzle-price-snapshot-repository";
 import { TickerDetail } from "@/features/market-data/ui/ticker-detail";
@@ -46,15 +45,24 @@ export default async function TickerPage({
   ]);
 
   return (
-    <DashboardShell
-      activeSection="overview"
-      breadcrumbs={[
-        { href: "/dashboard", label: "Dashboard" },
-        { label: "Ativos" },
-        { label: symbol },
-      ]}
-      userEmail={currentProfile.email}
-    >
+    <>
+      <nav aria-label="Trilha de navegação">
+        <ol className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <li>
+            <Link className="hover:text-foreground" href="/dashboard">
+              Dashboard
+            </Link>
+          </li>
+          <li className="flex items-center gap-2">
+            <ChevronRight aria-hidden="true" className="size-4" />
+            <span>Ativos</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <ChevronRight aria-hidden="true" className="size-4" />
+            <span aria-current="page">{symbol}</span>
+          </li>
+        </ol>
+      </nav>
       <section className="grid gap-6">
         <SectionHeader
           title="Detalhe do Ativo"
@@ -66,6 +74,6 @@ export default async function TickerPage({
           watchlistItem={watchlistItem}
         />
       </section>
-    </DashboardShell>
+    </>
   );
 }

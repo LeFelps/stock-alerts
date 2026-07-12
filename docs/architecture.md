@@ -96,6 +96,18 @@ Server Actions are reachable by direct POST. Every Server Action must
 authenticate, validate input, call use cases, and revalidate or redirect only at
 the boundary.
 
+Shared product chrome belongs in the nearest common route layout. Pages beneath
+that layout return only their changing content. A segment's `loading.tsx` and
+`error.tsx` must represent only the subtree they replace so navigation remains
+available during loading and recoverable page failures.
+
+Authenticated dashboard page segments use the Next.js client cache for five
+minutes. Server Actions return serializable, discriminated results for expected
+mutation failures and invalidate every route derived from changed data. Client
+optimistic state is only a temporary projection; the authenticated server result
+remains authoritative and profile-owned state must never be cached across
+sessions.
+
 ## Market Data and Alerts
 
 Market data should pass through a provider port and external adapters. Use cases

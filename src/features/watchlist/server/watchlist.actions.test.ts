@@ -12,11 +12,7 @@ import {
 const createDrizzleWatchlistRepositoryMock = vi.hoisted(() => vi.fn());
 const createWatchlistItemForProfileMock = vi.hoisted(() => vi.fn());
 const deleteWatchlistItemForProfileMock = vi.hoisted(() => vi.fn());
-const notFoundMock = vi.hoisted(() =>
-  vi.fn(() => {
-    throw new Error("NEXT_NOT_FOUND");
-  }),
-);
+const findByIdForProfileMock = vi.hoisted(() => vi.fn());
 const requireCurrentProfileMock = vi.hoisted(() => vi.fn());
 const revalidatePathMock = vi.hoisted(() => vi.fn());
 const setWatchlistItemEnabledForProfileMock = vi.hoisted(() => vi.fn());
@@ -41,27 +37,25 @@ vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-vi.mock("next/navigation", () => ({
-  notFound: notFoundMock,
-}));
-
 describe("watchlist actions", () => {
   beforeEach(() => {
     createDrizzleWatchlistRepositoryMock.mockReset();
     createDrizzleWatchlistRepositoryMock.mockReturnValue({
+      findByIdForProfile: findByIdForProfileMock,
       type: "watchlist-repository",
     });
+    findByIdForProfileMock.mockReset();
+    findByIdForProfileMock.mockResolvedValue(createItem("PETR4"));
     createWatchlistItemForProfileMock.mockReset();
     createWatchlistItemForProfileMock.mockResolvedValue({
       ok: true,
-      value: {},
+      value: createItem("PETR4"),
     });
     deleteWatchlistItemForProfileMock.mockReset();
     deleteWatchlistItemForProfileMock.mockResolvedValue({
       ok: true,
       value: undefined,
     });
-    notFoundMock.mockClear();
     requireCurrentProfileMock.mockReset();
     requireCurrentProfileMock.mockResolvedValue({
       email: "user@example.com",
@@ -77,12 +71,12 @@ describe("watchlist actions", () => {
     setWatchlistItemEnabledForProfileMock.mockReset();
     setWatchlistItemEnabledForProfileMock.mockResolvedValue({
       ok: true,
-      value: {},
+      value: createItem("PETR4"),
     });
     updateWatchlistItemForProfileMock.mockReset();
     updateWatchlistItemForProfileMock.mockResolvedValue({
       ok: true,
-      value: {},
+      value: createItem("VALE3"),
     });
   });
 
@@ -99,7 +93,11 @@ describe("watchlist actions", () => {
         profileId: toProfileId("profile-1"),
         symbol: "PETR4",
       },
-      { watchlistRepository: { type: "watchlist-repository" } },
+      {
+        watchlistRepository: expect.objectContaining({
+          type: "watchlist-repository",
+        }),
+      },
     );
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/settings");
   });
@@ -126,7 +124,11 @@ describe("watchlist actions", () => {
         profileId: toProfileId("profile-1"),
         symbol: "VALE3",
       },
-      { watchlistRepository: { type: "watchlist-repository" } },
+      {
+        watchlistRepository: expect.objectContaining({
+          type: "watchlist-repository",
+        }),
+      },
     );
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/settings");
   });
@@ -141,27 +143,37 @@ describe("watchlist actions", () => {
         itemId: "item-1",
         profileId: toProfileId("profile-1"),
       },
-      { watchlistRepository: { type: "watchlist-repository" } },
+      {
+        watchlistRepository: expect.objectContaining({
+          type: "watchlist-repository",
+        }),
+      },
     );
     expect(deleteWatchlistItemForProfileMock).toHaveBeenCalledWith(
       {
         itemId: "item-1",
         profileId: toProfileId("profile-1"),
       },
-      { watchlistRepository: { type: "watchlist-repository" } },
+      {
+        watchlistRepository: expect.objectContaining({
+          type: "watchlist-repository",
+        }),
+      },
     );
-    expect(revalidatePathMock).toHaveBeenCalledTimes(2);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/settings");
   });
 
-  it("renders not found when an owned mutation target is missing", async () => {
+  it("returns not found when an owned mutation target is missing", async () => {
     deleteWatchlistItemForProfileMock.mockResolvedValue({
       error: { type: "watchlist_item_not_found" },
       ok: false,
     });
 
-    await expect(deleteWatchlistItem("missing-item")).rejects.toThrow(
-      "NEXT_NOT_FOUND",
-    );
+    await expect(deleteWatchlistItem("missing-item")).resolves.toEqual({
+      error: "not_found",
+      status: "error",
+    });
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 
@@ -194,4 +206,17 @@ function createFormData(symbol: string) {
   formData.set("notes", "Longo prazo");
   formData.set("symbol", symbol);
   return formData;
+}
+
+function createItem(symbol: string) {
+  return {
+    createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    displayName: "Petrobras",
+    enabled: true,
+    id: "item-1",
+    notes: "Longo prazo",
+    profileId: toProfileId("profile-1"),
+    symbol,
+    updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+  };
 }
