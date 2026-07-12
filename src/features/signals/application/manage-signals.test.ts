@@ -35,6 +35,7 @@ describe("signal use cases", () => {
 
 function createSignalRepository(): SignalRepository {
   return {
+    findMatching: vi.fn(),
     listForProfile: vi.fn(),
     upsertMany: vi.fn(),
   };

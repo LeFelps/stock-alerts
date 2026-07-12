@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, or } from "drizzle-orm";
 
 import { db } from "@/db";
 import { signals } from "@/db/schema";
@@ -13,6 +13,29 @@ export function createDrizzleSignalRepository(
   database: Database = db,
 ): SignalRepository {
   return {
+    async findMatching(expectedSignals) {
+      if (expectedSignals.length === 0) return [];
+
+      const rows = await database
+        .select()
+        .from(signals)
+        .where(
+          or(
+            ...expectedSignals.map((signal) =>
+              and(
+                eq(signals.profileId, signal.profileId),
+                eq(signals.symbol, signal.symbol),
+                eq(signals.signalType, signal.signalType),
+                eq(signals.marketDate, signal.marketDate),
+                eq(signals.reason, signal.reason),
+              ),
+            ),
+          ),
+        );
+
+      return rows.map(toSignal);
+    },
+
     async listForProfile(profileId) {
       const rows = await database
         .select()

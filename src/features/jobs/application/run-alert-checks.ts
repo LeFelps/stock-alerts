@@ -83,7 +83,15 @@ export async function runAlertChecks(
     const errors: string[] = [];
     const digestCandidates = new Map<
       string,
-      { signals: Signal[]; target: AlertCheckTarget }
+      {
+        checkpoints: Array<{
+          marketDate: string;
+          profileId: AlertCheckTarget["profileId"];
+          symbol: string;
+        }>;
+        signals: Signal[];
+        target: AlertCheckTarget;
+      }
     >();
 
     for (const [symbol, symbolTargets] of targetsBySymbol) {
@@ -130,26 +138,48 @@ export async function runAlertChecks(
               await signalRepository.upsertMany(detectedSignals);
             summary.createdSignals += recordedSignals.length;
 
-            if (latestSnapshot.marketDate === eligibleMarketDate) {
-              const eligibleSignals = recordedSignals.filter(
+            const eligibleDetectedSignals =
+              latestSnapshot.marketDate === eligibleMarketDate
+                ? detectedSignals.filter(
+                    (signal) => signal.marketDate === eligibleMarketDate,
+                  )
+                : [];
+
+            if (eligibleDetectedSignals.length > 0) {
+              const recordedEligibleSignals = recordedSignals.filter(
                 (signal) => signal.marketDate === eligibleMarketDate,
               );
+              const eligibleSignals =
+                recordedEligibleSignals.length ===
+                eligibleDetectedSignals.length
+                  ? recordedEligibleSignals
+                  : await signalRepository.findMatching(
+                      eligibleDetectedSignals,
+                    );
 
-              if (eligibleSignals.length > 0) {
-                const group = digestCandidates.get(target.profileId) ?? {
-                  signals: [],
-                  target,
-                };
-                group.signals.push(...eligibleSignals);
-                digestCandidates.set(target.profileId, group);
+              if (eligibleSignals.length !== eligibleDetectedSignals.length) {
+                throw new Error("Eligible signals were not persisted");
               }
-            }
 
-            await alertCheckCheckpointRepository.markProcessed({
-              marketDate: latestSnapshot.marketDate,
-              profileId: target.profileId,
-              symbol,
-            });
+              const group = digestCandidates.get(target.profileId) ?? {
+                checkpoints: [],
+                signals: [],
+                target,
+              };
+              group.signals.push(...eligibleSignals);
+              group.checkpoints.push({
+                marketDate: latestSnapshot.marketDate,
+                profileId: target.profileId,
+                symbol,
+              });
+              digestCandidates.set(target.profileId, group);
+            } else {
+              await alertCheckCheckpointRepository.markProcessed({
+                marketDate: latestSnapshot.marketDate,
+                profileId: target.profileId,
+                symbol,
+              });
+            }
           } catch (error) {
             summary.failedTargets += 1;
             errors.push(`${symbol}: target: ${formatError(error)}`);
@@ -161,7 +191,7 @@ export async function runAlertChecks(
       }
     }
 
-    for (const { signals, target } of digestCandidates.values()) {
+    for (const { checkpoints, signals, target } of digestCandidates.values()) {
       try {
         const outcome = await deliverBuySignalDigest(
           {
@@ -185,6 +215,17 @@ export async function runAlertChecks(
           errors.push(
             `${target.profileId}: email: ${outcome.deliveries[0]?.providerError ?? "Unknown delivery failure"}`,
           );
+        }
+
+        for (const checkpoint of checkpoints) {
+          try {
+            await alertCheckCheckpointRepository.markProcessed(checkpoint);
+          } catch (error) {
+            summary.failedTargets += 1;
+            errors.push(
+              `${checkpoint.symbol}: checkpoint: ${formatError(error)}`,
+            );
+          }
         }
       } catch (error) {
         summary.failedEmails += 1;
