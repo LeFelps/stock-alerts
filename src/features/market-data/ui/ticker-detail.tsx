@@ -33,7 +33,7 @@ export function TickerDetail({
           <div>
             <h2 className="text-2xl font-semibold">{watchlistItem.symbol}</h2>
             <p className="text-sm text-muted-foreground">
-              {watchlistItem.displayName ?? "Ativo acompanhado"}
+              {watchlistItem.longName ?? watchlistItem.symbol}
             </p>
           </div>
         </div>

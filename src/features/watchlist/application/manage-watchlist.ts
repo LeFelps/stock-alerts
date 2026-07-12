@@ -1,7 +1,11 @@
 import type { ProfileId } from "@/features/profiles/domain/profile";
 
 import type { WatchlistItem, WatchlistItemId } from "../domain/watchlist-item";
-import type { WatchlistItemFields, WatchlistRepository } from "./ports";
+import type {
+  AssetCatalogProvider,
+  UpdateWatchlistItemFields,
+  WatchlistRepository,
+} from "./ports";
 import { err, ok, type Result } from "./result";
 
 type WatchlistDependencies = {
@@ -10,6 +14,8 @@ type WatchlistDependencies = {
 
 type WatchlistMutationError =
   | { type: "duplicate_symbol" }
+  | { type: "invalid_symbol" }
+  | { type: "provider_error" }
   | { type: "watchlist_item_not_found" };
 
 export async function listWatchlistItemsForProfile(
@@ -20,40 +26,50 @@ export async function listWatchlistItemsForProfile(
 }
 
 export async function createWatchlistItemForProfile(
-  command: WatchlistItemFields & { profileId: ProfileId },
-  { watchlistRepository }: WatchlistDependencies,
-) {
+  command: { notes: string | null; profileId: ProfileId; symbol: string },
+  {
+    assetCatalogProvider,
+    watchlistRepository,
+  }: WatchlistDependencies & { assetCatalogProvider: AssetCatalogProvider },
+): Promise<Result<WatchlistItem, WatchlistMutationError>> {
+  const resolution = await assetCatalogProvider.resolveSymbol(command.symbol);
+
+  if (resolution.status === "invalid") {
+    return err({ type: "invalid_symbol" });
+  }
+
+  if (resolution.status === "unavailable") {
+    return err({ type: "provider_error" });
+  }
+
+  const { logoUrl, longName, symbol } = resolution.asset;
   const duplicate = await watchlistRepository.findBySymbol({
     profileId: command.profileId,
-    symbol: command.symbol,
+    symbol,
   });
 
   if (duplicate) {
     return err({ type: "duplicate_symbol" } as const);
   }
 
-  const createdItem = await watchlistRepository.create(command);
+  const createdItem = await watchlistRepository.create({
+    notes: command.notes,
+    profileId: command.profileId,
+    logoUrl,
+    longName,
+    symbol,
+  });
 
   return createdItem ? ok(createdItem) : err({ type: "duplicate_symbol" });
 }
 
 export async function updateWatchlistItemForProfile(
-  command: WatchlistItemFields & {
+  command: UpdateWatchlistItemFields & {
     itemId: WatchlistItemId;
     profileId: ProfileId;
   },
   { watchlistRepository }: WatchlistDependencies,
 ): Promise<Result<WatchlistItem, WatchlistMutationError>> {
-  const duplicate = await watchlistRepository.findBySymbol({
-    excludeItemId: command.itemId,
-    profileId: command.profileId,
-    symbol: command.symbol,
-  });
-
-  if (duplicate) {
-    return err({ type: "duplicate_symbol" });
-  }
-
   const updatedItem = await watchlistRepository.update(command);
 
   return updatedItem

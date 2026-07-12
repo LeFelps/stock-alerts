@@ -107,9 +107,7 @@ export function createDrizzleWatchlistRepository(
       const [updatedItem] = await database
         .update(watchlistItems)
         .set({
-          displayName: command.displayName,
           notes: command.notes,
-          symbol: command.symbol,
           updatedAt: new Date(),
         })
         .where(

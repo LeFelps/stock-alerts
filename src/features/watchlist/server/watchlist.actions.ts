@@ -10,6 +10,7 @@ import {
   updateWatchlistItemForProfile,
 } from "../application/manage-watchlist";
 import { toWatchlistItemId } from "../domain/watchlist-item";
+import { createBrapiAssetCatalogProvider } from "../infrastructure/brapi-asset-catalog-provider";
 import { createDrizzleWatchlistRepository } from "../infrastructure/drizzle-watchlist-repository";
 import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
 import {
@@ -18,7 +19,10 @@ import {
   type ActionResult,
 } from "@/lib/action-result";
 import type { WatchlistItem } from "../domain/watchlist-item";
-import { parseWatchlistForm } from "./validation";
+import {
+  parseCreateWatchlistForm,
+  parseUpdateWatchlistForm,
+} from "./validation";
 
 const itemIdSchema = z.string().min(1);
 
@@ -26,17 +30,20 @@ export async function createWatchlistItem(
   formData: FormData,
 ): Promise<ActionResult<WatchlistItem>> {
   const { profile } = await requireCurrentProfile();
-  const fields = safeParseWatchlistForm(formData);
+  const fields = safeParseForm(() => parseCreateWatchlistForm(formData));
 
   if (!fields) return actionError("validation_error");
 
   const result = await createWatchlistItemForProfile(
     { ...fields, profileId: profile.id },
-    { watchlistRepository: createDrizzleWatchlistRepository() },
+    {
+      assetCatalogProvider: createBrapiAssetCatalogProvider(),
+      watchlistRepository: createDrizzleWatchlistRepository(),
+    },
   );
 
   if (!result.ok) {
-    return actionError("duplicate_symbol");
+    return mutationError(result.error.type);
   }
 
   revalidateWatchlistRoutes(result.value.symbol);
@@ -48,7 +55,7 @@ export async function updateWatchlistItem(
   formData: FormData,
 ): Promise<ActionResult<WatchlistItem>> {
   const { profile } = await requireCurrentProfile();
-  const fields = safeParseWatchlistForm(formData);
+  const fields = safeParseForm(() => parseUpdateWatchlistForm(formData));
   const parsedItemId = itemIdSchema.safeParse(itemId);
 
   if (!fields || !parsedItemId.success) {
@@ -139,9 +146,9 @@ function revalidateWatchlistRoutes(...symbols: Array<string | undefined>) {
   }
 }
 
-function safeParseWatchlistForm(formData: FormData) {
+function safeParseForm<T>(parse: () => T): T | null {
   try {
-    return parseWatchlistForm(formData);
+    return parse();
   } catch (error) {
     if (error instanceof z.ZodError) return null;
     throw error;
@@ -149,9 +156,14 @@ function safeParseWatchlistForm(formData: FormData) {
 }
 
 function mutationError<T>(
-  type: "duplicate_symbol" | "watchlist_item_not_found",
+  type:
+    | "duplicate_symbol"
+    | "invalid_symbol"
+    | "provider_error"
+    | "watchlist_item_not_found",
 ): ActionResult<T> {
-  return actionError<T>(
-    type === "duplicate_symbol" ? "duplicate_symbol" : "not_found",
-  );
+  if (type === "duplicate_symbol") return actionError<T>("duplicate_symbol");
+  if (type === "invalid_symbol") return actionError<T>("invalid_symbol");
+  if (type === "provider_error") return actionError<T>("provider_error");
+  return actionError<T>("not_found");
 }

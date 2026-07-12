@@ -46,7 +46,8 @@ export const watchlistItems = pgTable(
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
     symbol: text("symbol").notNull(),
-    displayName: text("display_name"),
+    longName: text("long_name"),
+    logoUrl: text("logo_url"),
     notes: text("notes"),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),

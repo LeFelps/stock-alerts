@@ -297,7 +297,8 @@ describe("DashboardPage", () => {
     listWatchlistItemsForProfileMock.mockResolvedValue([
       {
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
-        displayName: "Petrobras",
+        longName: "Petrobras",
+        logoUrl: null,
         enabled: true,
         id: "item-1",
         notes: "Acompanhar resultados",
@@ -373,7 +374,8 @@ describe("TickerPage", () => {
     });
     findWatchlistItemBySymbolMock.mockResolvedValue({
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
-      displayName: "Petrobras",
+      longName: "Petrobras",
+      logoUrl: null,
       enabled: true,
       id: "item-1",
       notes: null,
@@ -659,7 +661,8 @@ describe("SettingsPage", () => {
     listWatchlistItemsForProfileMock.mockResolvedValue([
       {
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
-        displayName: "Petrobras",
+        longName: "Petrobras",
+        logoUrl: null,
         enabled: true,
         id: "item-1",
         notes: null,
@@ -687,7 +690,10 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("button", { name: /Excluir/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Editar/ }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("PETR4")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("PETR4")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Observações" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Salvar alterações" }),
     ).toBeInTheDocument();
@@ -701,7 +707,8 @@ describe("SettingsPage", () => {
     listWatchlistItemsForProfileMock.mockResolvedValue([
       {
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
-        displayName: "Petrobras",
+        longName: "Petrobras",
+        logoUrl: null,
         enabled: true,
         id: "item-1",
         notes: "Acompanhar resultados trimestrais",

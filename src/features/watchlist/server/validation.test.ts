@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeTickerSymbol, parseWatchlistForm } from "./validation";
+import {
+  normalizeTickerSymbol,
+  parseCreateWatchlistForm,
+  parseUpdateWatchlistForm,
+} from "./validation";
 
 describe("watchlist form validation", () => {
   it("normalizes lowercase symbols and removes whitespace", () => {
@@ -10,33 +14,29 @@ describe("watchlist form validation", () => {
   it("parses valid fields and converts empty optional fields to null", () => {
     const formData = new FormData();
     formData.set("symbol", " vale3 ");
-    formData.set("displayName", " ");
     formData.set("notes", "");
 
-    expect(parseWatchlistForm(formData)).toEqual({
-      displayName: null,
+    expect(parseCreateWatchlistForm(formData)).toEqual({
       notes: null,
       symbol: "VALE3",
     });
+
+    expect(parseUpdateWatchlistForm(formData)).toEqual({ notes: null });
   });
 
   it("rejects invalid symbols", () => {
     const formData = new FormData();
     formData.set("symbol", "AB-1");
 
-    expect(() => parseWatchlistForm(formData)).toThrow();
+    expect(() => parseCreateWatchlistForm(formData)).toThrow();
   });
 
   it("enforces optional field length limits", () => {
-    const longDisplayName = new FormData();
-    longDisplayName.set("symbol", "PETR4");
-    longDisplayName.set("displayName", "x".repeat(121));
-
     const longNotes = new FormData();
     longNotes.set("symbol", "PETR4");
     longNotes.set("notes", "x".repeat(1001));
 
-    expect(() => parseWatchlistForm(longDisplayName)).toThrow();
-    expect(() => parseWatchlistForm(longNotes)).toThrow();
+    expect(() => parseCreateWatchlistForm(longNotes)).toThrow();
+    expect(() => parseUpdateWatchlistForm(longNotes)).toThrow();
   });
 });
