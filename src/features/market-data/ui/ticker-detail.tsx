@@ -1,8 +1,11 @@
+"use client";
+
+import type { ColumnDef } from "@tanstack/react-table";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { Table } from "@/components/ui/table";
+import { DataTable } from "@/components/ui/data-table";
 import type { IndicatorSnapshot } from "@/features/indicators/domain/indicator-snapshot";
 import type { PriceSnapshot } from "@/features/market-data/domain/price-snapshot";
 import type { WatchlistItem } from "@/features/watchlist/domain/watchlist-item";
@@ -97,44 +100,57 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function CompactPriceTable({ snapshots }: { snapshots: PriceSnapshot[] }) {
   return (
-    <Table>
-      <thead className="text-muted-foreground">
-        <tr>
-          <th className="border-b px-3 py-3 font-medium">Pregão</th>
-          <th className="border-b px-3 py-3 font-medium">Abertura</th>
-          <th className="border-b px-3 py-3 font-medium">Máxima</th>
-          <th className="border-b px-3 py-3 font-medium">Mínima</th>
-          <th className="border-b px-3 py-3 font-medium">Fechamento</th>
-          <th className="border-b px-3 py-3 font-medium">Volume</th>
-        </tr>
-      </thead>
-      <tbody>
-        {snapshots.map((snapshot) => (
-          <tr key={`${snapshot.source}-${snapshot.marketDate}`}>
-            <td className="border-b px-3 py-3">
-              {formatMarketDate(snapshot.marketDate)}
-            </td>
-            <td className="border-b px-3 py-3">
-              {formatCurrency(snapshot.open)}
-            </td>
-            <td className="border-b px-3 py-3">
-              {formatCurrency(snapshot.high)}
-            </td>
-            <td className="border-b px-3 py-3">
-              {formatCurrency(snapshot.low)}
-            </td>
-            <td className="border-b px-3 py-3">
-              {formatCurrency(snapshot.close)}
-            </td>
-            <td className="border-b px-3 py-3">
-              {formatInteger(snapshot.volume)}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </Table>
+    <DataTable
+      columnLabels={priceColumnLabels}
+      columns={priceColumns}
+      data={snapshots}
+      getRowId={(snapshot) => `${snapshot.source}-${snapshot.marketDate}`}
+      searchPlaceholder="Buscar preços…"
+    />
   );
 }
+
+const priceColumns: ColumnDef<PriceSnapshot>[] = [
+  {
+    accessorFn: (snapshot) => formatMarketDate(snapshot.marketDate),
+    header: "Pregão",
+    id: "marketDate",
+  },
+  {
+    accessorFn: (snapshot) => formatCurrency(snapshot.open),
+    header: "Abertura",
+    id: "open",
+  },
+  {
+    accessorFn: (snapshot) => formatCurrency(snapshot.high),
+    header: "Máxima",
+    id: "high",
+  },
+  {
+    accessorFn: (snapshot) => formatCurrency(snapshot.low),
+    header: "Mínima",
+    id: "low",
+  },
+  {
+    accessorFn: (snapshot) => formatCurrency(snapshot.close),
+    header: "Fechamento",
+    id: "close",
+  },
+  {
+    accessorFn: (snapshot) => formatInteger(snapshot.volume),
+    header: "Volume",
+    id: "volume",
+  },
+];
+
+const priceColumnLabels = {
+  close: "Fechamento",
+  high: "Máxima",
+  low: "Mínima",
+  marketDate: "Pregão",
+  open: "Abertura",
+  volume: "Volume",
+};
 
 function IndicatorTable({ snapshots }: { snapshots: IndicatorSnapshot[] }) {
   if (snapshots.length === 0) {
@@ -146,40 +162,51 @@ function IndicatorTable({ snapshots }: { snapshots: IndicatorSnapshot[] }) {
   }
 
   return (
-    <Table>
-      <thead className="text-muted-foreground">
-        <tr>
-          <th className="border-b px-3 py-3 font-medium">Pregão</th>
-          <th className="border-b px-3 py-3 font-medium">Fechamento</th>
-          <th className="border-b px-3 py-3 font-medium">MME6</th>
-          <th className="border-b px-3 py-3 font-medium">MME13</th>
-          <th className="border-b px-3 py-3 font-medium">MME42</th>
-        </tr>
-      </thead>
-      <tbody>
-        {snapshots.map((snapshot) => (
-          <tr key={snapshot.marketDate}>
-            <td className="border-b px-3 py-3">
-              {formatMarketDate(snapshot.marketDate)}
-            </td>
-            <td className="border-b px-3 py-3">
-              {formatCurrency(snapshot.close)}
-            </td>
-            <td className="border-b px-3 py-3">
-              {formatNumber(snapshot.ema6)}
-            </td>
-            <td className="border-b px-3 py-3">
-              {formatNumber(snapshot.ema13)}
-            </td>
-            <td className="border-b px-3 py-3">
-              {formatNumber(snapshot.ema42)}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </Table>
+    <DataTable
+      columnLabels={indicatorColumnLabels}
+      columns={indicatorColumns}
+      data={snapshots}
+      getRowId={(snapshot) => snapshot.marketDate}
+      searchPlaceholder="Buscar indicadores…"
+    />
   );
 }
+
+const indicatorColumns: ColumnDef<IndicatorSnapshot>[] = [
+  {
+    accessorFn: (snapshot) => formatMarketDate(snapshot.marketDate),
+    header: "Pregão",
+    id: "marketDate",
+  },
+  {
+    accessorFn: (snapshot) => formatCurrency(snapshot.close),
+    header: "Fechamento",
+    id: "close",
+  },
+  {
+    accessorFn: (snapshot) => formatNumber(snapshot.ema6),
+    header: "MME6",
+    id: "ema6",
+  },
+  {
+    accessorFn: (snapshot) => formatNumber(snapshot.ema13),
+    header: "MME13",
+    id: "ema13",
+  },
+  {
+    accessorFn: (snapshot) => formatNumber(snapshot.ema42),
+    header: "MME42",
+    id: "ema42",
+  },
+];
+
+const indicatorColumnLabels = {
+  close: "Fechamento",
+  ema13: "MME13",
+  ema42: "MME42",
+  ema6: "MME6",
+  marketDate: "Pregão",
+};
 
 function RawSnapshots({ snapshots }: { snapshots: PriceSnapshot[] }) {
   return (

@@ -5,9 +5,15 @@
   --foreground: #18181b;
   --card: #ffffff;
   --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
   --muted: #f4f4f5;
   --muted-foreground: #52525b;
   --border: #e4e4e7;
+  --input: #d4d4d8;
+  --ring: #2563eb;
   --primary: #2563eb;
   --primary-foreground: #ffffff;
   --radius: 0.5rem;
@@ -18,9 +24,15 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --font-sans: var(--font-geist-sans);
@@ -36,9 +48,15 @@
     --foreground: #ededed;
     --card: #18181b;
     --card-foreground: #fafafa;
+    --popover: #18181b;
+    --popover-foreground: #fafafa;
+    --accent: #27272a;
+    --accent-foreground: #fafafa;
     --muted: #27272a;
     --muted-foreground: #a1a1aa;
     --border: #3f3f46;
+    --input: #52525b;
+    --ring: #60a5fa;
     --primary: #60a5fa;
     --primary-foreground: #082f49;
   }

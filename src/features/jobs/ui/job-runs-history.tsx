@@ -1,5 +1,9 @@
+"use client";
+
+import type { ColumnDef } from "@tanstack/react-table";
+
 import { Badge } from "@/components/ui/badge";
-import { Table } from "@/components/ui/table";
+import { DataTable } from "@/components/ui/data-table";
 import { formatHumanDateTime } from "@/lib/format-date";
 
 import type { JobRun } from "../domain/job-run";
@@ -18,56 +22,85 @@ export function JobRunsHistory({ jobRuns }: { jobRuns: JobRun[] }) {
   }
 
   return (
-    <Table>
-      <thead className="text-muted-foreground">
-        <tr>
-          <th className="border-b px-3 py-3 font-medium">Início</th>
-          <th className="border-b px-3 py-3 font-medium">Status</th>
-          <th className="border-b px-3 py-3 font-medium">Duração</th>
-          <th className="border-b px-3 py-3 font-medium">Ativos</th>
-          <th className="border-b px-3 py-3 font-medium">Ignorados</th>
-          <th className="border-b px-3 py-3 font-medium">Sinais</th>
-          <th className="border-b px-3 py-3 font-medium">Emails</th>
-          <th className="border-b px-3 py-3 font-medium">Erro</th>
-        </tr>
-      </thead>
-      <tbody>
-        {jobRuns.map((jobRun) => (
-          <tr key={jobRun.id}>
-            <td className="border-b px-3 py-3">
-              {formatHumanDateTime(jobRun.startedAt)}
-            </td>
-            <td className="border-b px-3 py-3">
-              <Badge
-                variant={
-                  jobRun.status === "FAILED" ? "destructive" : "secondary"
-                }
-              >
-                {formatStatus(jobRun)}
-              </Badge>
-            </td>
-            <td className="border-b px-3 py-3">
-              {formatDuration(jobRun.durationMs)}
-            </td>
-            <td className="border-b px-3 py-3">
-              {jobRun.summary.refreshedSymbols}/{jobRun.summary.uniqueSymbols}
-            </td>
-            <td className="border-b px-3 py-3">
-              {jobRun.summary.staleTargets}
-            </td>
-            <td className="border-b px-3 py-3">
-              {jobRun.summary.createdSignals}
-            </td>
-            <td className="border-b px-3 py-3">{formatEmails(jobRun)}</td>
-            <td className="max-w-xs truncate border-b px-3 py-3 text-muted-foreground">
-              {jobRun.error ?? "Sem erro"}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </Table>
+    <DataTable
+      columnLabels={jobRunColumnLabels}
+      columns={jobRunColumns}
+      data={jobRuns}
+      getRowId={(jobRun) => jobRun.id}
+      searchPlaceholder="Buscar execuções…"
+    />
   );
 }
+
+const jobRunColumns: ColumnDef<JobRun>[] = [
+  {
+    accessorFn: (jobRun) => formatHumanDateTime(jobRun.startedAt),
+    header: "Início",
+    id: "startedAt",
+  },
+  {
+    accessorFn: formatStatus,
+    cell: ({ row }) => (
+      <Badge
+        variant={row.original.status === "FAILED" ? "destructive" : "secondary"}
+      >
+        {formatStatus(row.original)}
+      </Badge>
+    ),
+    header: "Status",
+    id: "status",
+  },
+  {
+    accessorFn: (jobRun) => formatDuration(jobRun.durationMs),
+    header: "Duração",
+    id: "duration",
+  },
+  {
+    accessorFn: (jobRun) =>
+      `${jobRun.summary.refreshedSymbols}/${jobRun.summary.uniqueSymbols}`,
+    header: "Ativos",
+    id: "symbols",
+  },
+  {
+    accessorFn: (jobRun) => jobRun.summary.staleTargets,
+    header: "Ignorados",
+    id: "staleTargets",
+  },
+  {
+    accessorFn: (jobRun) => jobRun.summary.createdSignals,
+    header: "Sinais",
+    id: "signals",
+  },
+  {
+    accessorFn: formatEmails,
+    header: "Emails",
+    id: "emails",
+  },
+  {
+    accessorFn: (jobRun) => jobRun.error ?? "Sem erro",
+    cell: ({ row }) => (
+      <span
+        className="block max-w-xs truncate text-muted-foreground"
+        title={row.original.error ?? "Sem erro"}
+      >
+        {row.original.error ?? "Sem erro"}
+      </span>
+    ),
+    header: "Erro",
+    id: "error",
+  },
+];
+
+const jobRunColumnLabels = {
+  duration: "Duração",
+  emails: "Emails",
+  error: "Erro",
+  signals: "Sinais",
+  staleTargets: "Ignorados",
+  startedAt: "Início",
+  status: "Status",
+  symbols: "Ativos",
+};
 
 function formatStatus(jobRun: JobRun) {
   switch (jobRun.status) {

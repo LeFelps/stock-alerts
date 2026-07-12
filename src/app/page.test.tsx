@@ -17,7 +17,6 @@ const createDrizzlePriceSnapshotRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzleSignalRepositoryMock = vi.hoisted(() => vi.fn());
 const createDrizzleWatchlistRepositoryMock = vi.hoisted(() => vi.fn());
 const findWatchlistItemBySymbolMock = vi.hoisted(() => vi.fn());
-const listLatestMarketDataDatesForSymbolsMock = vi.hoisted(() => vi.fn());
 const listIndicatorSnapshotsForSymbolMock = vi.hoisted(() => vi.fn());
 const listRecentJobRunsMock = vi.hoisted(() => vi.fn());
 const latestIndicatorsBySymbolMock = vi.hoisted(() => vi.fn());
@@ -44,10 +43,6 @@ vi.mock("@/auth", () => ({
 
 vi.mock("@/features/profiles/server/current-profile", () => ({
   requireCurrentProfile: requireCurrentProfileMock,
-}));
-
-vi.mock("@/features/market-data/application/refresh-market-data", () => ({
-  listLatestMarketDataDatesForSymbols: listLatestMarketDataDatesForSymbolsMock,
 }));
 
 vi.mock("@/features/jobs/application/manage-job-runs", () => ({
@@ -188,8 +183,6 @@ describe("DashboardPage", () => {
     listIndicatorSnapshotsForSymbolMock.mockResolvedValue([]);
     latestIndicatorsBySymbolMock.mockReset();
     latestIndicatorsBySymbolMock.mockResolvedValue(new Map());
-    listLatestMarketDataDatesForSymbolsMock.mockReset();
-    listLatestMarketDataDatesForSymbolsMock.mockResolvedValue(new Map());
     listPriceSnapshotsForSymbolMock.mockReset();
     listPriceSnapshotsForSymbolMock.mockResolvedValue([]);
     listSignalsForProfileMock.mockReset();
@@ -214,8 +207,8 @@ describe("DashboardPage", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Painel" })).toBeInTheDocument();
-    expect(screen.getByText("Painel protegido")).toBeInTheDocument();
-    expect(screen.getByText("Sessão ativa")).toBeInTheDocument();
+    expect(screen.queryByText("Painel protegido")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sessão ativa")).not.toBeInTheDocument();
     expect(screen.getByText("user@example.com")).toBeInTheDocument();
     expect(
       screen.getAllByRole("link", { name: /Dashboard/ })[0],
@@ -275,9 +268,6 @@ describe("DashboardPage", () => {
       email: "user@example.com",
       profile: createProfile({ emailAlertsEnabled: true }),
     });
-    listLatestMarketDataDatesForSymbolsMock.mockResolvedValue(
-      new Map([["PETR4", "2026-01-02"]]),
-    );
     latestIndicatorsBySymbolMock.mockResolvedValue(
       new Map([
         [
@@ -311,6 +301,14 @@ describe("DashboardPage", () => {
     render(await DashboardPage());
 
     expect(screen.getByText("PETR4")).toBeInTheDocument();
+    expect(screen.getByText("Petrobras")).toHaveClass("text-muted-foreground");
+    expect(
+      screen.getByRole("columnheader", { name: "Ícone" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Buscar na tabela" }),
+    ).toHaveAttribute("placeholder", "Buscar ativos…");
+    expect(screen.getByRole("button", { name: "Colunas" })).toBeInTheDocument();
     expect(screen.getByText("Aguardando regra")).toBeInTheDocument();
     expect(
       screen.queryByRole("columnheader", { name: "MME6" }),
@@ -321,10 +319,12 @@ describe("DashboardPage", () => {
     expect(
       screen.queryByRole("columnheader", { name: "MME42" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Abrir/ })).toHaveAttribute(
-      "href",
-      "/dashboard/tickers/PETR4",
-    );
+    expect(
+      screen.getByRole("link", { name: "Inspecionar PETR4" }),
+    ).toHaveAttribute("href", "/dashboard/tickers/PETR4");
+    expect(
+      screen.queryByRole("columnheader", { name: "Detalhes" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Atualizar/ }),
     ).not.toBeInTheDocument();
@@ -617,8 +617,6 @@ describe("SettingsPage", () => {
     createDrizzleWatchlistRepositoryMock.mockReturnValue({
       type: "watchlist-repository",
     });
-    listLatestMarketDataDatesForSymbolsMock.mockReset();
-    listLatestMarketDataDatesForSymbolsMock.mockResolvedValue(new Map());
     listWatchlistItemsForProfileMock.mockReset();
     listWatchlistItemsForProfileMock.mockResolvedValue([]);
     redirectMock.mockClear();
@@ -684,8 +682,28 @@ describe("SettingsPage", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("PETR4")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Atualizar/ }),
+      screen.queryByRole("button", { name: /Atualizar/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "Dados de mercado" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Ícone" }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Colunas" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Observações" }).firstChild,
+    ).toHaveClass("text-center");
+    expect(
+      screen.getByRole("columnheader", { name: "Status" }).firstChild,
+    ).toHaveClass("text-center");
+    expect(
+      screen.getByRole("button", { name: "Sem observações de PETR4" })
+        .parentElement,
+    ).toHaveClass("justify-center");
+    expect(screen.getByText("Ativo").parentElement).toHaveClass("text-center");
     expect(screen.getByRole("button", { name: /Pausar/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Excluir/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Editar/ }));
