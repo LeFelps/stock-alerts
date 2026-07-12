@@ -26,7 +26,10 @@ export default async function SettingsPage() {
       />
       <WatchlistManagement
         key={watchlistItems
-          .map((item) => `${item.id}:${item.updatedAt.toISOString()}`)
+          .map(
+            (item) =>
+              `${item.id}:${item.updatedAt.toISOString()}:${latestMarketDates.get(item.symbol) ?? "no-market-data"}`,
+          )
           .join("|")}
         items={watchlistItems.map((item) => ({
           ...item,
