@@ -64,9 +64,11 @@ const navItems: DashboardNavItem[] = [
 export function DashboardNavigation({
   ariaLabel,
   className,
+  onNavigate,
 }: {
   ariaLabel: string;
   className?: string;
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const activeSection = getActiveSection(pathname);
@@ -88,7 +90,11 @@ export function DashboardNavigation({
             key={item.href}
             variant="ghost"
           >
-            <Link aria-current={active ? "page" : undefined} href={item.href}>
+            <Link
+              aria-current={active ? "page" : undefined}
+              href={item.href}
+              onNavigate={onNavigate}
+            >
               <Icon aria-hidden="true" className="size-4" />
               {item.label}
             </Link>

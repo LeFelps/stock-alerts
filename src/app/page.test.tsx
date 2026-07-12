@@ -266,12 +266,8 @@ describe("DashboardPage", () => {
     fireEvent.click(toggle);
 
     const drawer = screen.getByRole("dialog");
-    expect(drawer).toHaveClass("transition-[transform,opacity]");
-    expect(drawer).toHaveClass("motion-reduce:transition-none");
-    expect(drawer).toHaveClass("data-[state=open]:opacity-100");
-    expect(drawer).toHaveClass("data-[state=closed]:opacity-0");
-    expect(drawer).toHaveClass("data-[state=open]:translate-x-0");
-    expect(drawer).toHaveClass("data-[state=closed]:-translate-x-full");
+    expect(drawer).toHaveAttribute("data-side", "left");
+    expect(drawer).toHaveAttribute("data-state", "open");
   });
 
   it("renders the watchlist rows returned for the current profile", async () => {

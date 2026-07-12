@@ -1,18 +1,11 @@
 import type { ReactNode } from "react";
-import { LineChart, Menu } from "lucide-react";
+import { LineChart } from "lucide-react";
 import Link from "next/link";
 
 import { signOutUser } from "@/app/actions";
 import { SignOutSubmitButton } from "@/components/action-submit-button";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { DashboardNavigation } from "./dashboard-navigation";
+import { MobileNavDrawer } from "./mobile-nav-drawer";
 
 export function DashboardShell({
   userEmail,
@@ -71,29 +64,6 @@ function DesktopSidebarNav() {
     <aside className="hidden lg:block">
       <DashboardNavigation ariaLabel="Seções do painel" />
     </aside>
-  );
-}
-
-function MobileNavDrawer() {
-  return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button
-          aria-label="Abrir navegação"
-          className="lg:hidden"
-          size="icon"
-          variant="outline"
-        >
-          <Menu aria-hidden="true" className="size-4" />
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="left">
-        <SheetHeader>
-          <SheetTitle>Alertas de Ativos</SheetTitle>
-        </SheetHeader>
-        <DashboardNavigation ariaLabel="Navegação principal" className="pt-6" />
-      </SheetContent>
-    </Sheet>
   );
 }
 
