@@ -35,3 +35,16 @@ professional, minimal, and functional appearance.
 - Use shadcn/Radix primitives for overlays, drawers, and interactive
   components.
 - Do not nest cards inside cards.
+
+## Async interactions
+
+- Every async control exposes a local pending state and prevents duplicate
+  submission without blocking unrelated controls.
+- Apply optimistic changes only when the client can truthfully project the
+  result, and roll them back when the server rejects the mutation.
+- Keep existing values visible while external market data refreshes; never
+  invent prices, dates, or successful provider results.
+- Confirm destructive optimistic actions before applying them.
+- Announce mutation success and failure with concise Brazilian Portuguese
+  toasts. Pending controls and loading regions use appropriate `aria-busy`,
+  status, or live-region semantics.

@@ -56,7 +56,7 @@ describe("updateEmailAlertsPreference", () => {
     });
     updateEmailAlertsPreferenceForProfileMock.mockResolvedValue({
       ok: true,
-      value: {},
+      value: { emailAlertsEnabled: true },
     });
   });
 
@@ -83,16 +83,16 @@ describe("updateEmailAlertsPreference", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/preferences");
   });
 
-  it("renders not found when the profile update target is missing", async () => {
+  it("returns not found when the profile update target is missing", async () => {
     updateEmailAlertsPreferenceForProfileMock.mockResolvedValue({
       error: { type: "profile_not_found" },
       ok: false,
     });
 
-    await expect(updateEmailAlertsPreference(new FormData())).rejects.toThrow(
-      "NEXT_NOT_FOUND",
-    );
-    expect(notFoundMock).toHaveBeenCalled();
+    await expect(updateEmailAlertsPreference(new FormData())).resolves.toEqual({
+      error: "not_found",
+      status: "error",
+    });
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 });

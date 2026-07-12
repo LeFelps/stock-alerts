@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { signInWithGoogle } from "@/app/actions";
 import { auth } from "@/auth";
-import { Button } from "@/components/ui/button";
+import { SignInSubmitButton } from "@/components/action-submit-button";
 
 type HomeProps = {
   searchParams?: Promise<{
@@ -90,10 +90,7 @@ export default async function Home({ searchParams }: HomeProps = {}) {
           )}
 
           <form action={signInWithGoogle}>
-            <Button className="w-full" type="submit">
-              <LogIn aria-hidden="true" className="size-4" />
-              Entrar com Google
-            </Button>
+            <SignInSubmitButton />
           </form>
         </section>
       </div>

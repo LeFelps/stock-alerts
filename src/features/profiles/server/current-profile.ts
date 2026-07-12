@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
 import { auth } from "@/auth";
 
@@ -12,24 +13,26 @@ export type CurrentProfile = {
   profile: Profile;
 };
 
-export async function requireCurrentProfile(): Promise<CurrentProfile> {
-  const session = await auth();
+export const requireCurrentProfile = cache(
+  async (): Promise<CurrentProfile> => {
+    const session = await auth();
 
-  if (!session?.user?.id || !session.user.email) {
-    redirect("/");
-  }
+    if (!session?.user?.id || !session.user.email) {
+      redirect("/");
+    }
 
-  const result = await ensureProfileForAuthUser(
-    { authUserId: toAuthUserId(session.user.id) },
-    { profilesRepository: createDrizzleProfilesRepository() },
-  );
+    const result = await ensureProfileForAuthUser(
+      { authUserId: toAuthUserId(session.user.id) },
+      { profilesRepository: createDrizzleProfilesRepository() },
+    );
 
-  if (!result.ok) {
-    throw new Error("Failed to load current profile");
-  }
+    if (!result.ok) {
+      throw new Error("Failed to load current profile");
+    }
 
-  return {
-    email: session.user.email,
-    profile: result.value,
-  };
-}
+    return {
+      email: session.user.email,
+      profile: result.value,
+    };
+  },
+);

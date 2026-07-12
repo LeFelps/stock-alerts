@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { createDrizzleAlertEmailDeliveryRepository } from "@/features/alerts/infrastructure/drizzle-alert-email-delivery-repository";
@@ -11,6 +10,11 @@ import { createDrizzleSignalRepository } from "@/features/signals/infrastructure
 import { createDrizzleWatchlistRepository } from "@/features/watchlist/infrastructure/drizzle-watchlist-repository";
 import { toWatchlistItemId } from "@/features/watchlist/domain/watchlist-item";
 import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
+import {
+  actionError,
+  actionSuccess,
+  type ActionResult,
+} from "@/lib/action-result";
 
 import { refreshMarketDataForWatchlistItem } from "../application/refresh-market-data";
 import { createConfiguredMarketDataProvider } from "../infrastructure/market-data-provider-factory";
@@ -24,12 +28,16 @@ const revalidatePathSchema = z
 export async function refreshWatchlistItemMarketData(
   itemId: string,
   formData?: FormData,
-) {
+): Promise<ActionResult> {
   const { email, profile } = await requireCurrentProfile();
+  const parsedItemId = itemIdSchema.safeParse(itemId);
+
+  if (!parsedItemId.success) return actionError("validation_error");
+
   const result = await refreshMarketDataForWatchlistItem(
     {
       emailAlertsEnabled: profile.emailAlertsEnabled,
-      itemId: toWatchlistItemId(itemIdSchema.parse(itemId)),
+      itemId: toWatchlistItemId(parsedItemId.data),
       profileId: profile.id,
       recipientEmail: email,
     },
@@ -45,11 +53,12 @@ export async function refreshWatchlistItemMarketData(
   );
 
   if (!result.ok) {
-    notFound();
+    return actionError("not_found");
   }
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard/signals");
 
   const requestedPath = formData?.get("revalidatePath");
   const parsedPath = revalidatePathSchema.safeParse(requestedPath);
@@ -57,4 +66,6 @@ export async function refreshWatchlistItemMarketData(
   if (parsedPath.success) {
     revalidatePath(parsedPath.data);
   }
+
+  return actionSuccess(undefined);
 }

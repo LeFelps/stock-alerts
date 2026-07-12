@@ -165,15 +165,16 @@ describe("market data actions", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/tickers/PETR4");
   });
 
-  it("renders not found for an out-of-scope watchlist item", async () => {
+  it("returns not found for an out-of-scope watchlist item", async () => {
     refreshMarketDataForWatchlistItemMock.mockResolvedValue({
       error: { type: "watchlist_item_not_found" },
       ok: false,
     });
 
-    await expect(refreshWatchlistItemMarketData("missing")).rejects.toThrow(
-      "NEXT_NOT_FOUND",
-    );
+    await expect(refreshWatchlistItemMarketData("missing")).resolves.toEqual({
+      error: "not_found",
+      status: "error",
+    });
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 

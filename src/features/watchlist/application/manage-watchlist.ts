@@ -1,6 +1,6 @@
 import type { ProfileId } from "@/features/profiles/domain/profile";
 
-import type { WatchlistItemId } from "../domain/watchlist-item";
+import type { WatchlistItem, WatchlistItemId } from "../domain/watchlist-item";
 import type { WatchlistItemFields, WatchlistRepository } from "./ports";
 import { err, ok, type Result } from "./result";
 
@@ -43,7 +43,7 @@ export async function updateWatchlistItemForProfile(
     profileId: ProfileId;
   },
   { watchlistRepository }: WatchlistDependencies,
-): Promise<Result<unknown, WatchlistMutationError>> {
+): Promise<Result<WatchlistItem, WatchlistMutationError>> {
   const duplicate = await watchlistRepository.findBySymbol({
     excludeItemId: command.itemId,
     profileId: command.profileId,
@@ -68,7 +68,7 @@ export async function setWatchlistItemEnabledForProfile(
     profileId: ProfileId;
   },
   { watchlistRepository }: WatchlistDependencies,
-): Promise<Result<unknown, WatchlistMutationError>> {
+): Promise<Result<WatchlistItem, WatchlistMutationError>> {
   const updatedItem = await watchlistRepository.setEnabled(command);
 
   return updatedItem

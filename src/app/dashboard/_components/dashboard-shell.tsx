@@ -1,18 +1,9 @@
 import type { ReactNode } from "react";
-import {
-  Bell,
-  Clock3,
-  ChevronRight,
-  LineChart,
-  LogOut,
-  Menu,
-  Settings,
-  SlidersHorizontal,
-  type LucideIcon,
-} from "lucide-react";
+import { LineChart, Menu } from "lucide-react";
 import Link from "next/link";
 
 import { signOutUser } from "@/app/actions";
+import { SignOutSubmitButton } from "@/components/action-submit-button";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -21,81 +12,24 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
-
-export type DashboardSection =
-  | "jobs"
-  | "overview"
-  | "preferences"
-  | "settings"
-  | "signals";
-
-export type BreadcrumbItem = {
-  label: string;
-  href?: string;
-};
-
-type DashboardNavItem = {
-  label: string;
-  icon: LucideIcon;
-  section?: DashboardSection;
-  href?: string;
-};
-
-const navItems: DashboardNavItem[] = [
-  {
-    label: "Dashboard",
-    icon: LineChart,
-    section: "overview",
-    href: "/dashboard",
-  },
-  {
-    label: "Configurações",
-    icon: Settings,
-    section: "settings",
-    href: "/dashboard/settings",
-  },
-  {
-    label: "Preferências",
-    icon: SlidersHorizontal,
-    section: "preferences",
-    href: "/dashboard/preferences",
-  },
-  {
-    label: "Sinais",
-    icon: Bell,
-    section: "signals",
-    href: "/dashboard/signals",
-  },
-  {
-    label: "Execuções",
-    icon: Clock3,
-    section: "jobs",
-    href: "/dashboard/jobs",
-  },
-];
+import { DashboardNavigation } from "./dashboard-navigation";
 
 export function DashboardShell({
-  activeSection,
   userEmail,
   children,
-  breadcrumbs,
 }: {
-  activeSection: DashboardSection;
   userEmail: string;
   children: ReactNode;
-  breadcrumbs?: BreadcrumbItem[];
 }) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        <DashboardHeader activeSection={activeSection} userEmail={userEmail} />
+        <DashboardHeader userEmail={userEmail} />
 
         <div className="grid flex-1 gap-8 py-8 lg:grid-cols-[14rem_1fr]">
-          <DesktopSidebarNav activeSection={activeSection} />
+          <DesktopSidebarNav />
 
           <section className="grid min-w-0 content-start gap-10">
-            {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
             {children}
           </section>
         </div>
@@ -104,13 +38,7 @@ export function DashboardShell({
   );
 }
 
-function DashboardHeader({
-  activeSection,
-  userEmail,
-}: {
-  activeSection: DashboardSection;
-  userEmail: string;
-}) {
+function DashboardHeader({ userEmail }: { userEmail: string }) {
   return (
     <header className="flex min-h-12 items-center justify-between gap-4">
       <Link className="flex items-center gap-3" href="/dashboard">
@@ -130,68 +58,23 @@ function DashboardHeader({
           {userEmail}
         </span>
         <form action={signOutUser}>
-          <Button aria-label="Sair" size="icon" type="submit" variant="outline">
-            <LogOut aria-hidden="true" className="size-4" />
-          </Button>
+          <SignOutSubmitButton />
         </form>
-        <MobileNavDrawer activeSection={activeSection} />
+        <MobileNavDrawer />
       </div>
     </header>
   );
 }
 
-function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
-  return (
-    <nav aria-label="Trilha de navegação">
-      <ol className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        {items.map((item, index) => {
-          const current = index === items.length - 1;
-
-          return (
-            <li
-              className="flex items-center gap-2"
-              key={`${item.label}-${index}`}
-            >
-              {index > 0 && (
-                <ChevronRight aria-hidden="true" className="size-4" />
-              )}
-              {item.href && !current ? (
-                <Link className="hover:text-foreground" href={item.href}>
-                  {item.label}
-                </Link>
-              ) : (
-                <span aria-current={current ? "page" : undefined}>
-                  {item.label}
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-}
-
-function DesktopSidebarNav({
-  activeSection,
-}: {
-  activeSection: DashboardSection;
-}) {
+function DesktopSidebarNav() {
   return (
     <aside className="hidden lg:block">
-      <DashboardNav
-        activeSection={activeSection}
-        ariaLabel="Seções do painel"
-      />
+      <DashboardNavigation ariaLabel="Seções do painel" />
     </aside>
   );
 }
 
-function MobileNavDrawer({
-  activeSection,
-}: {
-  activeSection: DashboardSection;
-}) {
+function MobileNavDrawer() {
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -208,68 +91,9 @@ function MobileNavDrawer({
         <SheetHeader>
           <SheetTitle>Alertas de Ativos</SheetTitle>
         </SheetHeader>
-        <DashboardNav
-          activeSection={activeSection}
-          ariaLabel="Navegação principal"
-          className="pt-6"
-        />
+        <DashboardNavigation ariaLabel="Navegação principal" className="pt-6" />
       </SheetContent>
     </Sheet>
-  );
-}
-
-function DashboardNav({
-  activeSection,
-  ariaLabel,
-  className,
-}: {
-  activeSection?: DashboardSection;
-  ariaLabel: string;
-  className?: string;
-}) {
-  return (
-    <nav aria-label={ariaLabel} className={cn("grid gap-1.5", className)}>
-      {navItems.map((item) => (
-        <DashboardNavButton
-          active={item.section === activeSection}
-          item={item}
-          key={item.label}
-        />
-      ))}
-    </nav>
-  );
-}
-
-function DashboardNavButton({
-  active,
-  item,
-}: {
-  active: boolean;
-  item: DashboardNavItem;
-}) {
-  const Icon = item.icon;
-  const className = cn(
-    "justify-start px-3 text-muted-foreground",
-    active &&
-      "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
-  );
-
-  if (!item.href) {
-    return (
-      <Button className={className} disabled type="button" variant="ghost">
-        <Icon aria-hidden="true" className="size-4" />
-        {item.label}
-      </Button>
-    );
-  }
-
-  return (
-    <Button asChild className={className} variant="ghost">
-      <Link href={item.href}>
-        <Icon aria-hidden="true" className="size-4" />
-        {item.label}
-      </Link>
-    </Button>
   );
 }
 

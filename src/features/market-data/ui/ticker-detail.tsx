@@ -1,13 +1,14 @@
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Table } from "@/components/ui/table";
 import type { IndicatorSnapshot } from "@/features/indicators/domain/indicator-snapshot";
-import { refreshWatchlistItemMarketData } from "@/features/market-data/server/market-data.actions";
 import type { PriceSnapshot } from "@/features/market-data/domain/price-snapshot";
 import type { WatchlistItem } from "@/features/watchlist/domain/watchlist-item";
 import { formatHumanDate } from "@/lib/format-date";
+
+import { MarketDataRefreshButton } from "./market-data-refresh-button";
 
 export function TickerDetail({
   indicatorSnapshots,
@@ -19,11 +20,6 @@ export function TickerDetail({
   watchlistItem: WatchlistItem;
 }) {
   const latestPrice = priceSnapshots.at(-1) ?? null;
-  const refreshAction = refreshWatchlistItemMarketData.bind(
-    null,
-    watchlistItem.id,
-  );
-
   return (
     <div className="grid gap-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -41,17 +37,11 @@ export function TickerDetail({
             </p>
           </div>
         </div>
-        <form action={refreshAction}>
-          <input
-            name="revalidatePath"
-            type="hidden"
-            value={`/dashboard/tickers/${watchlistItem.symbol}`}
-          />
-          <Button type="submit" variant="outline">
-            <RefreshCw aria-hidden="true" className="size-4" />
-            Atualizar dados
-          </Button>
-        </form>
+        <MarketDataRefreshButton
+          itemId={watchlistItem.id}
+          revalidatePath={`/dashboard/tickers/${watchlistItem.symbol}`}
+          symbol={watchlistItem.symbol}
+        />
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

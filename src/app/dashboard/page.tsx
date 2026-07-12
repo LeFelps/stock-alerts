@@ -1,7 +1,4 @@
-import {
-  DashboardShell,
-  SectionHeader,
-} from "@/app/dashboard/_components/dashboard-shell";
+import { SectionHeader } from "@/app/dashboard/_components/dashboard-shell";
 import { Badge } from "@/components/ui/badge";
 import { createDrizzleIndicatorSnapshotRepository } from "@/features/indicators/infrastructure/drizzle-indicator-snapshot-repository";
 import { MarketOverview } from "@/features/market-data/ui/market-overview";
@@ -21,7 +18,7 @@ export default async function DashboardPage() {
     await createDrizzleIndicatorSnapshotRepository().latestBySymbol(symbols);
 
   return (
-    <DashboardShell activeSection="overview" userEmail={currentProfile.email}>
+    <>
       <section className="rounded-lg bg-muted/55 p-5 sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <SectionHeader
@@ -46,6 +43,6 @@ export default async function DashboardPage() {
           }))}
         />
       </section>
-    </DashboardShell>
+    </>
   );
 }

@@ -1,4 +1,8 @@
+"use client";
+
 import { BellRing, Mail } from "lucide-react";
+import { startTransition, useState } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +17,43 @@ export function ProfileSettingsForm({
   email: string;
   profile: Profile;
 }) {
+  const [draftEnabled, setDraftEnabled] = useState(profile.emailAlertsEnabled);
+  const [savedEnabled, setSavedEnabled] = useState(profile.emailAlertsEnabled);
+  const [pending, setPending] = useState(false);
+
+  function submitPreference(formData: FormData) {
+    if (pending) return;
+    const previous = savedEnabled;
+    const next = formData.get("emailAlertsEnabled") === "true";
+    setSavedEnabled(next);
+    setPending(true);
+
+    startTransition(async () => {
+      try {
+        const result = await updateEmailAlertsPreference(formData);
+        if (result.status === "error") {
+          setSavedEnabled(previous);
+          setDraftEnabled(previous);
+          toast.error(
+            "Não foi possível salvar as preferências. Tente novamente.",
+          );
+          return;
+        }
+        setSavedEnabled(result.data.emailAlertsEnabled);
+        setDraftEnabled(result.data.emailAlertsEnabled);
+        toast.success("Preferências foram salvas.");
+      } catch {
+        setSavedEnabled(previous);
+        setDraftEnabled(previous);
+        toast.error(
+          "Não foi possível salvar as preferências. Tente novamente.",
+        );
+      } finally {
+        setPending(false);
+      }
+    });
+  }
+
   return (
     <section className="grid gap-6">
       <div className="grid gap-4 rounded-lg bg-muted/55 p-5 sm:p-6">
@@ -30,8 +71,12 @@ export function ProfileSettingsForm({
       </div>
 
       <form
-        action={updateEmailAlertsPreference}
+        aria-busy={pending}
         className="grid gap-5 rounded-lg border bg-card p-5 sm:p-6"
+        onSubmit={(event) => {
+          event.preventDefault();
+          submitPreference(new FormData(event.currentTarget));
+        }}
       >
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
@@ -47,9 +92,9 @@ export function ProfileSettingsForm({
           </div>
           <Badge
             className="w-fit"
-            variant={profile.emailAlertsEnabled ? "secondary" : "outline"}
+            variant={savedEnabled ? "secondary" : "outline"}
           >
-            {profile.emailAlertsEnabled ? "Ativados" : "Desativados"}
+            {savedEnabled ? "Ativados" : "Desativados"}
           </Badge>
         </div>
 
@@ -62,8 +107,10 @@ export function ProfileSettingsForm({
           </span>
           <input
             className="peer sr-only"
-            defaultChecked={profile.emailAlertsEnabled}
+            checked={draftEnabled}
+            disabled={pending}
             name="emailAlertsEnabled"
+            onChange={(event) => setDraftEnabled(event.target.checked)}
             type="checkbox"
             value="true"
           />
@@ -74,7 +121,9 @@ export function ProfileSettingsForm({
         </label>
 
         <div>
-          <Button type="submit">Salvar preferências</Button>
+          <Button disabled={pending} type="submit">
+            {pending ? "Salvando…" : "Salvar preferências"}
+          </Button>
         </div>
       </form>
     </section>
