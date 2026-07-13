@@ -103,9 +103,38 @@ describe("runAlertChecks", () => {
     );
   });
 
+  it("bootstraps six months of prices in two capped date windows", async () => {
+    const deps = createDependencies();
+    vi.mocked(
+      deps.alertCheckTargetRepository.listEnabledTargets,
+    ).mockResolvedValue([createTarget("profile-1", "PETR4")]);
+    vi.mocked(deps.priceSnapshotRepository.listForSymbol).mockResolvedValue([]);
+    vi.mocked(deps.marketDataProvider.fetchDailyPrices).mockImplementation(
+      async (symbol, window) =>
+        createSnapshots(window?.endDate ?? "2026-07-13", symbol),
+    );
+    vi.mocked(
+      deps.alertCheckCheckpointRepository.latestProcessedMarketDate,
+    ).mockResolvedValue("2026-07-13");
+
+    const result = await runAlertChecks({}, deps);
+
+    expect(result.ok).toBe(true);
+    expect(deps.marketDataProvider.fetchDailyPrices).toHaveBeenNthCalledWith(
+      1,
+      "PETR4",
+      { endDate: "2026-04-13", startDate: "2026-01-13" },
+    );
+    expect(deps.marketDataProvider.fetchDailyPrices).toHaveBeenNthCalledWith(
+      2,
+      "PETR4",
+      { endDate: "2026-07-13", startDate: "2026-04-13" },
+    );
+  });
+
   it("merges the fetched window with stored prices before calculating indicators", async () => {
     const deps = createDependencies();
-    const history = createSnapshots("2026-07-13", "PETR4");
+    const history = createSnapshots("2026-07-13", "PETR4", 182);
     vi.mocked(
       deps.alertCheckTargetRepository.listEnabledTargets,
     ).mockResolvedValue([createTarget("profile-1", "PETR4")]);
@@ -125,13 +154,17 @@ describe("runAlertChecks", () => {
     expect(deps.priceSnapshotRepository.listForSymbol).toHaveBeenCalledWith(
       "PETR4",
     );
+    expect(deps.marketDataProvider.fetchDailyPrices).toHaveBeenCalledWith(
+      "PETR4",
+      { endDate: "2026-07-13", startDate: "2026-07-12" },
+    );
     expect(
       vi.mocked(deps.indicatorSnapshotRepository.upsertMany).mock.calls[0]?.[0],
-    ).toHaveLength(43);
+    ).toHaveLength(182);
     expect(
       vi
         .mocked(deps.indicatorSnapshotRepository.upsertMany)
-        .mock.calls[0]?.[0].at(-1),
+        .mock.calls[0]?.[0].at(41),
     ).toEqual(expect.objectContaining({ ema42: expect.any(Number) }));
   });
 
@@ -444,7 +477,11 @@ function createDependencies() {
       .mockReturnValueOnce(new Date("2026-07-14T11:00:00.000Z"))
       .mockReturnValue(new Date("2026-07-14T11:00:01.000Z")),
     priceSnapshotRepository: {
-      listForSymbol: vi.fn().mockResolvedValue([]),
+      listForSymbol: vi
+        .fn()
+        .mockImplementation(async (symbol) =>
+          createSnapshots("2026-07-12", symbol, 181),
+        ),
       upsertMany: vi.fn(),
     } satisfies PriceSnapshotRepository,
     signalRepository: {
@@ -506,13 +543,25 @@ function createDelivery(
   };
 }
 
-function createSnapshots(latestMarketDate: string, symbol: string) {
+function createSnapshots(
+  latestMarketDate: string,
+  symbol: string,
+  length = 43,
+) {
   const latest = new Date(`${latestMarketDate}T00:00:00.000Z`);
 
-  return Array.from({ length: 43 }, (_, index) => {
+  return Array.from({ length }, (_, index) => {
     const date = new Date(latest);
-    date.setUTCDate(latest.getUTCDate() - (42 - index));
-    const close = index < 29 ? 150 : index < 36 ? 100 : index < 42 ? 125 : 220;
+    date.setUTCDate(latest.getUTCDate() - (length - 1 - index));
+    const signalIndex = index - (length - 43);
+    const close =
+      signalIndex < 29
+        ? 150
+        : signalIndex < 36
+          ? 100
+          : signalIndex < 42
+            ? 125
+            : 220;
 
     return {
       adjustedClose: close,

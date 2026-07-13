@@ -121,6 +121,23 @@ describe("brapi market data provider", () => {
     );
   });
 
+  it("fetches a date-bounded historical window without sending range", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(createSuccessfulResponse());
+    const provider = createBrapiMarketDataProvider({ fetchFn });
+
+    await provider.fetchDailyPrices("PETR4", {
+      endDate: "2026-04-13",
+      startDate: "2026-01-13",
+    });
+
+    expect(fetchFn).toHaveBeenCalledWith(
+      new URL(
+        "https://brapi.dev/api/v2/stocks/historical?symbols=PETR4&startDate=2026-01-13&endDate=2026-04-13&interval=1d&sortOrder=asc",
+      ),
+      expect.any(Object),
+    );
+  });
+
   it("retries transient service failures before succeeding", async () => {
     const fetchFn = vi
       .fn()

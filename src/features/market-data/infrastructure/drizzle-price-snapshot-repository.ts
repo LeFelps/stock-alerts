@@ -12,13 +12,12 @@ export function createDrizzlePriceSnapshotRepository(
   database: Database = db,
 ): PriceSnapshotRepository {
   return {
-    async listForSymbol(symbol, limit = 120) {
+    async listForSymbol(symbol) {
       const rows = await database
         .select()
         .from(priceSnapshots)
         .where(eq(priceSnapshots.symbol, symbol))
-        .orderBy(desc(priceSnapshots.marketDate))
-        .limit(limit);
+        .orderBy(desc(priceSnapshots.marketDate));
 
       return rows.map(toPriceSnapshot).reverse();
     },

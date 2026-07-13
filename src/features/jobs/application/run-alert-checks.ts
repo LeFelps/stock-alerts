@@ -6,6 +6,7 @@ import type {
 import { calculateIndicatorSnapshotsFromPrices } from "@/features/indicators/application/calculate-indicators";
 import type { IndicatorSnapshotRepository } from "@/features/indicators/application/ports";
 import type {
+  MarketDataDateWindow,
   MarketDataProvider,
   PriceSnapshotRepository,
 } from "@/features/market-data/application/ports";
@@ -97,16 +98,26 @@ export async function runAlertChecks(
 
     for (const [symbol, symbolTargets] of targetsBySymbol) {
       try {
-        const fetchedSnapshots =
-          await marketDataProvider.fetchDailyPrices(symbol);
+        const storedSnapshots =
+          await priceSnapshotRepository.listForSymbol(symbol);
+        const fetchWindows = marketDataFetchWindows(
+          storedSnapshots,
+          eligibleMarketDate,
+        );
+        const fetchedSnapshots: PriceSnapshot[] = [];
+
+        for (const window of fetchWindows) {
+          fetchedSnapshots.push(
+            ...(await marketDataProvider.fetchDailyPrices(symbol, window)),
+          );
+        }
+
         const latestSnapshot = fetchedSnapshots.at(-1);
 
         if (!latestSnapshot) {
           throw new Error("Market data response contained no daily prices");
         }
 
-        const storedSnapshots =
-          await priceSnapshotRepository.listForSymbol(symbol);
         const snapshots = mergePriceHistory(storedSnapshots, fetchedSnapshots);
         const indicatorSnapshots =
           calculateIndicatorSnapshotsFromPrices(snapshots);
@@ -324,6 +335,83 @@ function mergePriceHistory(
   return [...snapshotsByMarketDate.values()].sort((left, right) =>
     left.marketDate.localeCompare(right.marketDate),
   );
+}
+
+function marketDataFetchWindows(
+  storedSnapshots: PriceSnapshot[],
+  endDate: string,
+): MarketDataDateWindow[] {
+  const bootstrapStartDate = shiftCalendarMonths(endDate, -6);
+
+  if (storedSnapshots.length === 0) {
+    return splitDateWindow(bootstrapStartDate, endDate);
+  }
+
+  const storedDates = storedSnapshots
+    .map((snapshot) => snapshot.marketDate)
+    .sort();
+  const earliestStoredDate = storedDates.at(0);
+  const latestStoredDate = storedDates.at(-1);
+
+  if (!earliestStoredDate || !latestStoredDate) {
+    return splitDateWindow(bootstrapStartDate, endDate);
+  }
+
+  const windows: MarketDataDateWindow[] = [];
+
+  if (earliestStoredDate > bootstrapStartDate) {
+    windows.push(...splitDateWindow(bootstrapStartDate, earliestStoredDate));
+  }
+
+  const refreshStartDate =
+    latestStoredDate < bootstrapStartDate
+      ? bootstrapStartDate
+      : latestStoredDate;
+
+  if (refreshStartDate <= endDate) {
+    windows.push(...splitDateWindow(refreshStartDate, endDate));
+  }
+
+  return windows;
+}
+
+function splitDateWindow(startDate: string, endDate: string) {
+  const windows: MarketDataDateWindow[] = [];
+  let windowStartDate = startDate;
+
+  while (windowStartDate < endDate) {
+    const maximumEndDate = shiftCalendarMonths(windowStartDate, 3);
+    const windowEndDate = maximumEndDate < endDate ? maximumEndDate : endDate;
+
+    windows.push({ endDate: windowEndDate, startDate: windowStartDate });
+    windowStartDate = windowEndDate;
+  }
+
+  if (windows.length === 0) {
+    windows.push({ endDate, startDate });
+  }
+
+  return windows;
+}
+
+function shiftCalendarMonths(calendarDate: string, months: number) {
+  const [year, month, day] = calendarDate.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    throw new Error("Invalid market data calendar date");
+  }
+
+  const firstOfTargetMonth = new Date(Date.UTC(year, month - 1 + months, 1));
+  const targetYear = firstOfTargetMonth.getUTCFullYear();
+  const targetMonth = firstOfTargetMonth.getUTCMonth();
+  const lastDayOfTargetMonth = new Date(
+    Date.UTC(targetYear, targetMonth + 1, 0),
+  ).getUTCDate();
+  const targetDate = new Date(
+    Date.UTC(targetYear, targetMonth, Math.min(day, lastDayOfTargetMonth)),
+  );
+
+  return targetDate.toISOString().slice(0, 10);
 }
 
 async function finishJobRun({
