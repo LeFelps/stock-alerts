@@ -62,6 +62,7 @@ function createProfile({
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     emailAlertsEnabled,
     id: toProfileId("profile-1") as ProfileId,
+    role: "USER",
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
   };
 }

@@ -2,11 +2,13 @@ import type { Brand } from "@/lib/brand";
 
 export type AuthUserId = Brand<string, "AuthUserId">;
 export type ProfileId = Brand<string, "ProfileId">;
+export type ProfileRole = "SUPER" | "USER";
 
 export type Profile = {
   id: ProfileId;
   authUserId: AuthUserId;
   emailAlertsEnabled: boolean;
+  role: ProfileRole;
   createdAt: Date;
   updatedAt: Date;
 };
