@@ -9,7 +9,9 @@ test("shows the public Google sign-in page in pt-BR", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Entrar com Google" }),
   ).toBeVisible();
-  await expect(page.getByText("Alertas de Ativos")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { exact: true, name: "Stock Alerts" }),
+  ).toBeVisible();
 });
 
 test("redirects signed-out dashboard visitors to sign in", async ({ page }) => {
