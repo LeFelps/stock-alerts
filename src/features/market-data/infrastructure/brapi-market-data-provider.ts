@@ -34,6 +34,14 @@ const brapiHistoricalResponseSchema = z
   .passthrough();
 
 const brapiHistoricalRangeSchema = z.enum(["1d", "5d", "1mo", "3mo"]);
+const brapiDateWindowSchema = z
+  .object({
+    endDate: z.iso.date(),
+    startDate: z.iso.date(),
+  })
+  .refine((window) => window.startDate <= window.endDate, {
+    message: "Market data start date must not follow end date",
+  });
 
 const MAX_FETCH_ATTEMPTS = 3;
 const INITIAL_RETRY_DELAY_MS = 250;
@@ -67,10 +75,18 @@ export function createBrapiMarketDataProvider({
   const validatedRange = brapiHistoricalRangeSchema.parse(range);
 
   return {
-    async fetchDailyPrices(symbol) {
+    async fetchDailyPrices(symbol, window) {
+      const validatedWindow = brapiDateWindowSchema.optional().parse(window);
       const url = new URL("/api/v2/stocks/historical", "https://brapi.dev");
       url.searchParams.set("symbols", symbol);
-      url.searchParams.set("range", validatedRange);
+
+      if (validatedWindow) {
+        url.searchParams.set("startDate", validatedWindow.startDate);
+        url.searchParams.set("endDate", validatedWindow.endDate);
+      } else {
+        url.searchParams.set("range", validatedRange);
+      }
+
       url.searchParams.set("interval", "1d");
       url.searchParams.set("sortOrder", "asc");
 
