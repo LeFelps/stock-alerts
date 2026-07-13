@@ -113,17 +113,77 @@ describe("brapi market data provider", () => {
         symbol: "OLD3",
       },
     ]);
+    expect(fetchFn).toHaveBeenCalledWith(
+      new URL(
+        "https://brapi.dev/api/v2/stocks/historical?symbols=OLD3&range=3mo&interval=1d&sortOrder=asc",
+      ),
+      expect.any(Object),
+    );
+  });
+
+  it("retries transient service failures before succeeding", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("busy", { status: 503 }))
+      .mockResolvedValueOnce(createSuccessfulResponse());
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    const provider = createBrapiMarketDataProvider({ fetchFn, sleep });
+
+    const snapshots = await provider.fetchDailyPrices("PETR4");
+
+    expect(snapshots).toHaveLength(1);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledOnce();
+    expect(sleep).toHaveBeenCalledWith(250);
+  });
+
+  it("does not retry invalid requests", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValue(
+        new Response('{"code":"INVALID_RANGE"}', { status: 400 }),
+      );
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    const provider = createBrapiMarketDataProvider({ fetchFn, sleep });
+
+    await expect(provider.fetchDailyPrices("PETR4")).rejects.toMatchObject({
+      metadata: { body: '{"code":"INVALID_RANGE"}', status: 400 },
+      name: "MarketDataProviderError",
+    } satisfies Partial<MarketDataProviderError>);
+    expect(fetchFn).toHaveBeenCalledOnce();
+    expect(sleep).not.toHaveBeenCalled();
   });
 
   it("throws provider errors with response metadata", async () => {
     const fetchFn = vi
       .fn()
-      .mockResolvedValue(new Response("rate limited", { status: 429 }));
-    const provider = createBrapiMarketDataProvider({ fetchFn });
+      .mockImplementation(() =>
+        Promise.resolve(new Response("rate limited", { status: 429 })),
+      );
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    const provider = createBrapiMarketDataProvider({ fetchFn, sleep });
 
     await expect(provider.fetchDailyPrices("PETR4")).rejects.toMatchObject({
       metadata: { body: "rate limited", status: 429 },
       name: "MarketDataProviderError",
     } satisfies Partial<MarketDataProviderError>);
+    expect(fetchFn).toHaveBeenCalledTimes(3);
+    expect(sleep).toHaveBeenCalledTimes(2);
   });
 });
+
+function createSuccessfulResponse() {
+  return new Response(
+    JSON.stringify({
+      results: [
+        {
+          data: {
+            historicalDataPrice: [{ close: 30.65, date: 1756126800 }],
+          },
+          requestedSymbol: "PETR4",
+          symbol: "PETR4",
+        },
+      ],
+    }),
+  );
+}
