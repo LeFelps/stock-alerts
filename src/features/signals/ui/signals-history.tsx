@@ -4,6 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
 import { EMA_COLORS } from "@/features/indicators/ui/ema-colors";
 import { AssetLogo } from "@/features/watchlist/ui/asset-logo";
 import { formatHumanDate, formatHumanDateTime } from "@/lib/format-date";
@@ -18,13 +19,10 @@ export type SignalHistoryItem = {
 export function SignalsHistory({ items }: { items: SignalHistoryItem[] }) {
   if (items.length === 0) {
     return (
-      <div className="border-b py-10 text-center">
-        <p className="font-medium">Nenhum Sinal registrado.</p>
-        <p className="pt-2 text-sm text-muted-foreground">
-          Sinais aparecem aqui quando as médias móveis salvas atendem às regras
-          técnicas configuradas.
-        </p>
-      </div>
+      <EmptyState
+        description="Sinais aparecem aqui quando as médias móveis salvas atendem às regras técnicas configuradas."
+        title="Nenhum Sinal registrado."
+      />
     );
   }
 

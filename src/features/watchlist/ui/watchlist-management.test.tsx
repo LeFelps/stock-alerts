@@ -120,6 +120,24 @@ describe("WatchlistManagement optimistic actions", () => {
 
     expect(screen.getAllByText("PETR4")).toHaveLength(2);
   });
+
+  it("groups edit and delete behind the ellipsis action", async () => {
+    render(<WatchlistManagement items={[successItem().data]} />);
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: "Mais ações para PETR4" }),
+      { button: 0, ctrlKey: false },
+    );
+
+    expect(
+      await screen.findByRole("menuitem", { name: "Editar" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Excluir" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Excluir PETR4?" }),
+    ).toBeInTheDocument();
+  });
 });
 
 function successItem() {

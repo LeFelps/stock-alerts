@@ -118,7 +118,7 @@ export function MobileNavDrawer() {
       </SheetTrigger>
       <SheetContent ref={setContent} overlayRef={setOverlay} side="left">
         <SheetHeader>
-          <SheetTitle>Alertas de Ativos</SheetTitle>
+          <SheetTitle>Stock Alerts</SheetTitle>
         </SheetHeader>
         <DashboardNavigation
           ariaLabel="Navegação principal"

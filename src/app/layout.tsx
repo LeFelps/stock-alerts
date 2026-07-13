@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Alertas de Ativos",
+  title: "Stock Alerts",
   description: "Painel para acompanhar regras de alerta de ativos.",
 };
 

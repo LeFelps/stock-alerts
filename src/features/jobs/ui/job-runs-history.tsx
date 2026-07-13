@@ -4,6 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatHumanDateTime } from "@/lib/format-date";
 
 import type { JobRun } from "../domain/job-run";
@@ -11,13 +12,10 @@ import type { JobRun } from "../domain/job-run";
 export function JobRunsHistory({ jobRuns }: { jobRuns: JobRun[] }) {
   if (jobRuns.length === 0) {
     return (
-      <div className="border-b py-10 text-center">
-        <p className="font-medium">Nenhuma execução registrada.</p>
-        <p className="pt-2 text-sm text-muted-foreground">
-          As execuções aparecem aqui quando a rotina de verificação de alertas é
-          acionada.
-        </p>
-      </div>
+      <EmptyState
+        description="As execuções aparecem aqui quando a rotina de verificação de alertas é acionada."
+        title="Nenhuma execução registrada."
+      />
     );
   }
 

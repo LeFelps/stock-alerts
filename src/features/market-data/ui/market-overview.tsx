@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { IndicatorSnapshot } from "@/features/indicators/domain/indicator-snapshot";
 import type { WatchlistItem } from "@/features/watchlist/domain/watchlist-item";
 import { AssetLogo } from "@/features/watchlist/ui/asset-logo";
@@ -20,13 +21,10 @@ export type MarketOverviewItem = {
 export function MarketOverview({ items }: { items: MarketOverviewItem[] }) {
   if (items.length === 0) {
     return (
-      <div className="border-b py-10 text-center">
-        <p className="font-medium">Nenhum Ativo em acompanhamento.</p>
-        <p className="pt-2 text-sm text-muted-foreground">
-          Adicione um Ativo na Lista de acompanhamento para ver dados de
-          mercado.
-        </p>
-      </div>
+      <EmptyState
+        description="Adicione um Ativo na Lista de acompanhamento para ver dados de mercado."
+        title="Nenhum Ativo em acompanhamento."
+      />
     );
   }
 

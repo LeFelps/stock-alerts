@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { LineChart } from "lucide-react";
 import Link from "next/link";
 
 import { signOutUser } from "@/app/actions";
@@ -35,15 +34,9 @@ function DashboardHeader({ userEmail }: { userEmail: string }) {
   return (
     <header className="flex min-h-12 items-center justify-between gap-4">
       <Link className="flex items-center gap-3" href="/dashboard">
-        <div className="flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <LineChart aria-hidden="true" className="size-5" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">
-            Alertas de Ativos
-          </p>
-          <h1 className="text-xl font-semibold">Painel</h1>
-        </div>
+        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+          Stock Alerts
+        </h1>
       </Link>
 
       <div className="flex items-center gap-2">

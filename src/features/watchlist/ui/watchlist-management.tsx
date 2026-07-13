@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import {
+  Ellipsis,
   LoaderCircle,
   MessageSquareText,
   Pause,
@@ -17,6 +18,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Dialog,
   DialogClose,
@@ -25,8 +27,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   HoverCard,
   HoverCardContent,
@@ -254,12 +261,10 @@ export function WatchlistManagement({ items }: { items: WatchlistItem[] }) {
       </form>
 
       {rows.length === 0 ? (
-        <div className="border-b py-10 text-center">
-          <p className="font-medium">A Lista de acompanhamento está vazia.</p>
-          <p className="pt-2 text-sm text-muted-foreground">
-            Adicione um Ativo para começar a monitorá-lo.
-          </p>
-        </div>
+        <EmptyState
+          description="Adicione um Ativo para começar a monitorá-lo."
+          title="A Lista de acompanhamento está vazia."
+        />
       ) : (
         <DataTable
           columnLabels={watchlistColumnLabels}
@@ -342,44 +347,14 @@ function createWatchlistColumns({
       cell: ({ row }) => {
         const item = row.original;
         const operation = operations[item.id];
-        const disabled = Boolean(operation);
         return (
-          <div className="flex justify-end gap-2">
-            <EditWatchlistItemDialog
-              disabled={disabled}
-              item={item}
-              onSubmit={onEdit}
-              pending={operation === "edit"}
-            />
-            <Button
-              disabled={disabled}
-              onClick={() => onToggle(item)}
-              size="sm"
-              type="button"
-              variant="secondary"
-            >
-              {operation === "toggle" ? (
-                <LoaderCircle
-                  aria-hidden="true"
-                  className="size-4 animate-spin"
-                />
-              ) : item.enabled ? (
-                <Pause aria-hidden="true" className="size-4" />
-              ) : (
-                <Play aria-hidden="true" className="size-4" />
-              )}
-              {operation === "toggle"
-                ? "Salvando…"
-                : item.enabled
-                  ? "Pausar"
-                  : "Ativar"}
-            </Button>
-            <DeleteWatchlistItemDialog
-              disabled={disabled}
-              item={item}
-              onConfirm={onDelete}
-            />
-          </div>
+          <WatchlistItemActions
+            item={item}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            onToggle={onToggle}
+            operation={operation}
+          />
         );
       },
       enableHiding: false,
@@ -396,31 +371,140 @@ const watchlistColumnLabels = {
   symbol: "Código",
 };
 
+function WatchlistItemActions({
+  item,
+  onDelete,
+  onEdit,
+  onToggle,
+  operation,
+}: {
+  item: OptimisticItem;
+  onDelete: (item: OptimisticItem) => void;
+  onEdit: (item: OptimisticItem, draft: WatchlistEditFields) => void;
+  onToggle: (item: OptimisticItem) => void;
+  operation?: ItemOperation;
+}) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const openingDialog = useRef(false);
+  const disabled = Boolean(operation);
+  const toggleLabel = item.enabled
+    ? `Pausar ${item.symbol}`
+    : `Ativar ${item.symbol}`;
+
+  return (
+    <div className="flex items-center justify-end gap-1.5">
+      <Button
+        aria-label={
+          operation === "toggle" ? `Salvando ${item.symbol}` : toggleLabel
+        }
+        disabled={disabled}
+        onClick={() => onToggle(item)}
+        size="sm"
+        title={toggleLabel}
+        type="button"
+        variant="secondary"
+      >
+        {operation === "toggle" ? (
+          <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+        ) : item.enabled ? (
+          <Pause aria-hidden="true" className="size-4" />
+        ) : (
+          <Play aria-hidden="true" className="size-4" />
+        )}
+        {operation === "toggle"
+          ? "Salvando…"
+          : item.enabled
+            ? "Pausar"
+            : "Ativar"}
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            aria-label={`Mais ações para ${item.symbol}`}
+            disabled={disabled}
+            ref={menuTriggerRef}
+            size="icon-sm"
+            title={`Mais ações para ${item.symbol}`}
+            type="button"
+            variant="ghost"
+          >
+            <Ellipsis aria-hidden="true" className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          onCloseAutoFocus={(event) => {
+            if (!openingDialog.current) return;
+            event.preventDefault();
+            openingDialog.current = false;
+          }}
+        >
+          <DropdownMenuItem
+            onSelect={() => {
+              openingDialog.current = true;
+              window.setTimeout(() => setEditOpen(true), 0);
+            }}
+          >
+            <Pencil aria-hidden="true" />
+            Editar
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => {
+              openingDialog.current = true;
+              window.setTimeout(() => setDeleteOpen(true), 0);
+            }}
+            variant="destructive"
+          >
+            <Trash2 aria-hidden="true" />
+            Excluir
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <EditWatchlistItemDialog
+        item={item}
+        onOpenChange={setEditOpen}
+        onSubmit={onEdit}
+        open={editOpen}
+        pending={operation === "edit"}
+        returnFocusRef={menuTriggerRef}
+      />
+      <DeleteWatchlistItemDialog
+        disabled={disabled}
+        item={item}
+        onConfirm={onDelete}
+        onOpenChange={setDeleteOpen}
+        open={deleteOpen}
+        returnFocusRef={menuTriggerRef}
+      />
+    </div>
+  );
+}
+
 function DeleteWatchlistItemDialog({
   disabled,
   item,
   onConfirm,
+  onOpenChange,
+  open,
+  returnFocusRef,
 }: {
   disabled: boolean;
   item: OptimisticItem;
   onConfirm: (item: OptimisticItem) => void;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  returnFocusRef: React.RefObject<HTMLButtonElement | null>;
 }) {
-  const [open, setOpen] = useState(false);
   return (
-    <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger asChild>
-        <Button
-          aria-label={`Excluir ${item.symbol}`}
-          disabled={disabled}
-          size="icon-sm"
-          title={`Excluir ${item.symbol}`}
-          type="button"
-          variant="destructive"
-        >
-          <Trash2 aria-hidden="true" className="size-4" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
+    <Dialog onOpenChange={onOpenChange} open={open}>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          returnFocusRef.current?.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Excluir {item.symbol}?</DialogTitle>
           <DialogDescription>
@@ -434,8 +518,9 @@ function DeleteWatchlistItemDialog({
             </Button>
           </DialogClose>
           <Button
+            disabled={disabled}
             onClick={() => {
-              setOpen(false);
+              onOpenChange(false);
               onConfirm(item);
             }}
             type="button"
@@ -513,17 +598,20 @@ type WatchlistCreateFields = {
 type WatchlistEditFields = Pick<WatchlistCreateFields, "notes">;
 
 function EditWatchlistItemDialog({
-  disabled,
   item,
+  onOpenChange,
   onSubmit,
+  open,
   pending,
+  returnFocusRef,
 }: {
-  disabled: boolean;
   item: OptimisticItem;
+  onOpenChange: (open: boolean) => void;
   onSubmit: (item: OptimisticItem, draft: WatchlistEditFields) => void;
+  open: boolean;
   pending: boolean;
+  returnFocusRef: React.RefObject<HTMLButtonElement | null>;
 }) {
-  const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<WatchlistEditFields>({
     notes: item.notes,
   });
@@ -532,19 +620,18 @@ function EditWatchlistItemDialog({
     event.preventDefault();
     const normalized = normalizeEditFields(new FormData(event.currentTarget));
     setDraft(normalized);
-    setOpen(false);
+    onOpenChange(false);
     onSubmit(item, normalized);
   }
 
   return (
-    <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger asChild>
-        <Button disabled={disabled} size="sm" type="button" variant="outline">
-          <Pencil aria-hidden="true" className="size-4" />
-          Editar
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
+    <Dialog onOpenChange={onOpenChange} open={open}>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          returnFocusRef.current?.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Editar {item.symbol}</DialogTitle>
           <DialogDescription>

@@ -202,7 +202,9 @@ describe("DashboardPage", () => {
       }),
     );
 
-    expect(screen.getByRole("heading", { name: "Painel" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Stock Alerts" })).toHaveClass(
+      "font-extrabold",
+    );
     expect(screen.queryByText("Painel protegido")).not.toBeInTheDocument();
     expect(screen.queryByText("Sessão ativa")).not.toBeInTheDocument();
     expect(screen.getByText("user@example.com")).toBeInTheDocument();
@@ -231,6 +233,11 @@ describe("DashboardPage", () => {
       },
     );
     expect(latestIndicatorsBySymbolMock).toHaveBeenCalledWith([]);
+    expect(
+      screen
+        .getByText("Nenhum Ativo em acompanhamento.")
+        .closest('[data-slot="empty-state"]'),
+    ).toHaveClass("rounded-lg", "border", "bg-muted/40");
     expect(screen.queryByText("Adicionar ativo")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Lista de acompanhamento"),
@@ -381,6 +388,20 @@ describe("TickerPage", () => {
     });
     listPriceSnapshotsForSymbolMock.mockResolvedValue([
       {
+        adjustedClose: 30.25,
+        close: 30.25,
+        currency: "BRL",
+        fetchedAt: new Date("2026-01-01T12:00:00.000Z"),
+        high: 31,
+        low: 29.5,
+        marketDate: "2026-01-01",
+        open: 30,
+        rawPayload: { close: 30.25 },
+        source: "brapi",
+        symbol: "PETR4",
+        volume: 900,
+      },
+      {
         adjustedClose: 31.1,
         close: 31.1,
         currency: "BRL",
@@ -396,6 +417,15 @@ describe("TickerPage", () => {
       },
     ]);
     listIndicatorSnapshotsForSymbolMock.mockResolvedValue([
+      {
+        close: 30.25,
+        ema6: 30,
+        ema13: 29.5,
+        ema42: null,
+        marketDate: "2026-01-01",
+        source: "brapi",
+        symbol: "PETR4",
+      },
       {
         close: 31.1,
         ema6: 30.5,
@@ -427,6 +457,18 @@ describe("TickerPage", () => {
     expect(screen.getByText("MME6")).toBeInTheDocument();
     expect(screen.getByText("MME13")).toBeInTheDocument();
     expect(screen.getByText("MME42")).toBeInTheDocument();
+    const previousValueInfo = screen.getByRole("button", {
+      name: "Data do valor anterior de Último preço",
+    });
+    expect(previousValueInfo).toHaveAccessibleDescription(
+      "Valor anterior registrado em 01/01/2026.",
+    );
+    fireEvent.pointerEnter(previousValueInfo, { pointerType: "mouse" });
+    expect(
+      within(await screen.findByRole("tooltip")).getByText(
+        "Valor anterior registrado em 01/01/2026.",
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Dados insuficientes" }),
     ).toBeInTheDocument();
@@ -702,6 +744,9 @@ describe("SettingsPage", () => {
     expect(screen.getByText("PETR4")).toBeInTheDocument();
     expect(screen.getByText("Petrobras")).toBeInTheDocument();
     expect(
+      screen.getByRole("img", { name: "Logo indisponível para PETR4" }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("button", { name: "Sem observações de PETR4" }),
     ).toBeDisabled();
     expect(
@@ -731,10 +776,21 @@ describe("SettingsPage", () => {
         .parentElement,
     ).toHaveClass("justify-center");
     expect(screen.getByText("Ativo").parentElement).toHaveClass("text-center");
-    expect(screen.getByRole("button", { name: /Pausar/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Excluir/ })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Editar/ }));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Pausar PETR4" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Excluir/ }),
+    ).not.toBeInTheDocument();
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: "Mais ações para PETR4" }),
+      { button: 0, ctrlKey: false },
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "Excluir" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Editar" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(screen.queryByDisplayValue("PETR4")).not.toBeInTheDocument();
     expect(
       screen.getByRole("textbox", { name: "Observações" }),
