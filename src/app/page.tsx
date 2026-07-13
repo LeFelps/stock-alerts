@@ -31,18 +31,13 @@ export default async function Home({ searchParams }: HomeProps = {}) {
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto grid min-h-screen w-full max-w-6xl content-center gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_24rem] lg:px-8">
         <section className="grid content-center gap-8">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <LineChart aria-hidden="true" className="size-5" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Alertas de Ativos
-              </p>
-              <h1 className="text-2xl font-semibold sm:text-3xl">
-                Entrar no painel
-              </h1>
-            </div>
+          <div className="grid gap-6">
+            <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
+              Stock Alerts
+            </h1>
+            <h2 className="text-2xl font-semibold sm:text-3xl">
+              Entrar no painel
+            </h2>
           </div>
 
           <div className="max-w-2xl">

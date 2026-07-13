@@ -15,6 +15,8 @@ import {
 } from "@/features/signals/domain/technical-outlook";
 import { formatHumanDate } from "@/lib/format-date";
 
+import { PreviousValue } from "./previous-value";
+
 const CHART_WIDTH = 960;
 const CHART_HEIGHT = 320;
 const CHART_PADDING = { bottom: 40, left: 72, right: 24, top: 24 };
@@ -50,24 +52,28 @@ export function TickerDetail({
         >
           <Metric
             label="Último preço"
+            previousMarketDate={previousPrice?.marketDate ?? null}
             previousValue={formatCurrency(previousPrice?.close)}
             value={formatCurrency(latestPrice?.close)}
           />
           <Metric
             accentColor={EMA_COLORS.ema6}
             label="MME6"
+            previousMarketDate={previousIndicator?.marketDate ?? null}
             previousValue={formatCurrency(previousIndicator?.ema6)}
             value={formatCurrency(latestIndicator?.ema6)}
           />
           <Metric
             accentColor={EMA_COLORS.ema13}
             label="MME13"
+            previousMarketDate={previousIndicator?.marketDate ?? null}
             previousValue={formatCurrency(previousIndicator?.ema13)}
             value={formatCurrency(latestIndicator?.ema13)}
           />
           <Metric
             accentColor={EMA_COLORS.ema42}
             label="MME42"
+            previousMarketDate={previousIndicator?.marketDate ?? null}
             previousValue={formatCurrency(previousIndicator?.ema42)}
             value={formatCurrency(latestIndicator?.ema42)}
           />
@@ -95,11 +101,13 @@ export function TickerDetail({
 function Metric({
   accentColor,
   label,
+  previousMarketDate,
   previousValue,
   value,
 }: {
   accentColor?: string;
   label: string;
+  previousMarketDate: string | null;
   previousValue: string;
   value: string;
 }) {
@@ -113,13 +121,11 @@ function Metric({
         >
           {value}
         </span>
-        <span
-          aria-label={`Valor anterior: ${previousValue}`}
-          className="text-xs tabular-nums text-muted-foreground"
-          title="Valor anterior"
-        >
-          {previousValue}
-        </span>
+        <PreviousValue
+          label={label}
+          marketDate={previousMarketDate}
+          value={previousValue}
+        />
       </CardContent>
     </Card>
   );
