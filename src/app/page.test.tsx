@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import JobsPage from "./dashboard/jobs/page";
+import JobsLayout from "./dashboard/jobs/layout";
 import PreferencesPage from "./dashboard/preferences/page";
 import SignalsPage from "./dashboard/signals/page";
 import SettingsPage from "./dashboard/settings/page";
@@ -29,11 +30,14 @@ const notFoundMock = vi.hoisted(() =>
   }),
 );
 const requireCurrentProfileMock = vi.hoisted(() => vi.fn());
+const requireSuperProfileMock = vi.hoisted(() => vi.fn());
 const redirectMock = vi.hoisted(() =>
   vi.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
 );
+const routerPushMock = vi.hoisted(() => vi.fn());
+const routerRefreshMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/auth", () => ({
   auth: authMock,
@@ -43,6 +47,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("@/features/profiles/server/current-profile", () => ({
   requireCurrentProfile: requireCurrentProfileMock,
+  requireSuperProfile: requireSuperProfileMock,
 }));
 
 vi.mock("@/features/jobs/application/manage-job-runs", () => ({
@@ -102,10 +107,15 @@ vi.mock(
   }),
 );
 
+vi.mock("@/features/role-access/server/unlock-super-access.action", () => ({
+  unlockSuperAccess: vi.fn(),
+}));
+
 vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
   redirect: redirectMock,
   usePathname: () => "/dashboard",
+  useRouter: () => ({ push: routerPushMock, refresh: routerRefreshMock }),
 }));
 
 describe("Home", () => {
@@ -208,6 +218,11 @@ describe("DashboardPage", () => {
     expect(screen.queryByText("Painel protegido")).not.toBeInTheDocument();
     expect(screen.queryByText("Sessão ativa")).not.toBeInTheDocument();
     expect(screen.getByText("user@example.com")).toBeInTheDocument();
+    expect(screen.getByText("user@example.com")).toHaveClass(
+      "select-none",
+      "truncate",
+      "max-w-[25vw]",
+    );
     expect(screen.getByRole("banner")).not.toHaveClass("border-b");
     expect(
       screen.getByRole("navigation", { name: "Seções do painel" }),
@@ -230,8 +245,8 @@ describe("DashboardPage", () => {
       "/dashboard/signals",
     );
     expect(
-      screen.getAllByRole("link", { name: /Execuções/ })[0],
-    ).toHaveAttribute("href", "/dashboard/jobs");
+      screen.queryByRole("link", { name: /Execuções/ }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getAllByRole("link", { name: /Configurações/ })[0],
     ).toHaveAttribute("href", "/dashboard/settings");
@@ -270,8 +285,18 @@ describe("DashboardPage", () => {
       }),
     );
     const monitorTab = screen.getByRole("link", { name: "Monitoramento" });
+    const navigation = screen.getByRole("navigation", {
+      name: "Seções do painel",
+    });
 
     expect(monitorTab).toHaveClass("size-14", "lg:w-auto");
+    expect(navigation).toHaveClass("w-fit", "lg:w-full");
+    expect(navigation.parentElement).toHaveClass(
+      "fixed",
+      "bottom-4",
+      "justify-center",
+      "lg:static",
+    );
     expect(monitorTab.querySelector("svg")).toHaveClass("lg:hidden");
     expect(within(monitorTab).getByText("Monitoramento")).toHaveClass(
       "hidden",
@@ -280,6 +305,20 @@ describe("DashboardPage", () => {
     expect(
       screen.queryByRole("button", { name: "Abrir navegação" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the jobs navigation after role access is granted", async () => {
+    requireCurrentProfileMock.mockResolvedValue({
+      email: "user@example.com",
+      profile: createProfile({ emailAlertsEnabled: true, role: "SUPER" }),
+    });
+
+    render(await DashboardLayout({ children: null }));
+
+    expect(screen.getByRole("link", { name: "Execuções" })).toHaveAttribute(
+      "href",
+      "/dashboard/jobs",
+    );
   });
 
   it("renders the watchlist rows returned for the current profile", async () => {
@@ -622,6 +661,11 @@ describe("JobsPage", () => {
     listRecentJobRunsMock.mockResolvedValue([]);
     redirectMock.mockClear();
     requireCurrentProfileMock.mockReset();
+    requireSuperProfileMock.mockReset();
+    requireSuperProfileMock.mockResolvedValue({
+      email: "user@example.com",
+      profile: createProfile({ emailAlertsEnabled: true, role: "SUPER" }),
+    });
   });
 
   it("renders recent scheduled job runs", async () => {
@@ -680,6 +724,28 @@ describe("JobsPage", () => {
     expect(
       screen.getByText("Nenhuma execução registrada."),
     ).toBeInTheDocument();
+  });
+
+  it("redirects users without jobs access before loading job runs", async () => {
+    requireSuperProfileMock.mockRejectedValue(
+      new Error("NEXT_REDIRECT:/dashboard"),
+    );
+
+    await expect(JobsPage()).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+
+    expect(listRecentJobRunsMock).not.toHaveBeenCalled();
+  });
+
+  it("guards the jobs loading boundary with the same role access", async () => {
+    requireSuperProfileMock.mockRejectedValue(
+      new Error("NEXT_REDIRECT:/dashboard"),
+    );
+
+    await expect(JobsLayout({ children: null })).rejects.toThrow(
+      "NEXT_REDIRECT:/dashboard",
+    );
+
+    expect(requireSuperProfileMock).toHaveBeenCalledOnce();
   });
 
   it("redirects signed-out users to the sign-in page", async () => {
@@ -888,14 +954,17 @@ describe("PreferencesPage", () => {
 
 function createProfile({
   emailAlertsEnabled,
+  role = "USER",
 }: {
   emailAlertsEnabled: boolean;
+  role?: "SUPER" | "USER";
 }) {
   return {
     authUserId: "user-1",
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     emailAlertsEnabled,
     id: "profile-1",
+    role,
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
   };
 }

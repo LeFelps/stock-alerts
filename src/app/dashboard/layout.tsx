@@ -9,8 +9,11 @@ export default async function DashboardLayout({
   children: ReactNode;
 }) {
   const currentProfile = await requireCurrentProfile();
+  const isSuper = currentProfile.profile.role === "SUPER";
 
   return (
-    <DashboardShell userEmail={currentProfile.email}>{children}</DashboardShell>
+    <DashboardShell isSuper={isSuper} userEmail={currentProfile.email}>
+      {children}
+    </DashboardShell>
   );
 }

@@ -3,7 +3,10 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
 
-import type { ProfilesRepository } from "../application/ports";
+import type {
+  ProfileRoleRepository,
+  ProfilesRepository,
+} from "../application/ports";
 import { toAuthUserId, toProfileId, type Profile } from "../domain/profile";
 
 type Database = typeof db;
@@ -11,7 +14,7 @@ type ProfileRow = typeof profiles.$inferSelect;
 
 export function createDrizzleProfilesRepository(
   database: Database = db,
-): ProfilesRepository {
+): ProfilesRepository & ProfileRoleRepository {
   async function findByAuthUserId(
     authUserId: Parameters<ProfilesRepository["findByAuthUserId"]>[0],
   ) {
@@ -47,6 +50,16 @@ export function createDrizzleProfilesRepository(
 
     findByAuthUserId,
 
+    async updateRole(command) {
+      const [updatedProfile] = await database
+        .update(profiles)
+        .set({ role: command.role, updatedAt: new Date() })
+        .where(eq(profiles.id, command.profileId))
+        .returning();
+
+      return updatedProfile ? toProfile(updatedProfile) : null;
+    },
+
     async updateEmailAlertsPreference(command) {
       const [updatedProfile] = await database
         .update(profiles)
@@ -68,6 +81,7 @@ function toProfile(profile: ProfileRow): Profile {
     createdAt: profile.createdAt,
     emailAlertsEnabled: profile.emailAlertsEnabled,
     id: toProfileId(profile.id),
+    role: profile.role,
     updatedAt: profile.updatedAt,
   };
 }

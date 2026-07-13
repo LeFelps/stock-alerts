@@ -3,8 +3,11 @@ import { listRecentJobRuns } from "@/features/jobs/application/manage-job-runs";
 import { createDrizzleJobRunRepository } from "@/features/jobs/infrastructure/drizzle-job-run-repository";
 import { JobRunsHistory } from "@/features/jobs/ui/job-runs-history";
 import { JobRunsSummary } from "@/features/jobs/ui/job-runs-summary";
+import { requireSuperProfile } from "@/features/profiles/server/current-profile";
 
 export default async function JobsPage() {
+  await requireSuperProfile();
+
   const jobRuns = await listRecentJobRuns(
     { limit: 20 },
     { jobRunRepository: createDrizzleJobRunRepository() },

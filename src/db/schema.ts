@@ -7,11 +7,14 @@ import {
   integer,
   jsonb,
   pgTable,
+  pgEnum,
   primaryKey,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+export const profileRole = pgEnum("profile_role", ["USER", "SUPER"]);
 
 export const users = pgTable("users", {
   id: text("id")
@@ -32,6 +35,7 @@ export const profiles = pgTable("profiles", {
     .unique()
     .references(() => users.id, { onDelete: "cascade" }),
   emailAlertsEnabled: boolean("email_alerts_enabled").notNull().default(true),
+  role: profileRole("role").notNull().default("USER"),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });

@@ -92,6 +92,13 @@
       "when": 1783873332984,
       "tag": "0012_thick_silvermane",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783975484200,
+      "tag": "0013_third_arclight",
+      "breakpoints": true
     }
   ]
 }

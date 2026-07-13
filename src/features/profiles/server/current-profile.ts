@@ -36,3 +36,11 @@ export const requireCurrentProfile = cache(
     };
   },
 );
+
+export async function requireSuperProfile(): Promise<CurrentProfile> {
+  const currentProfile = await requireCurrentProfile();
+
+  if (currentProfile.profile.role !== "SUPER") redirect("/dashboard");
+
+  return currentProfile;
+}
