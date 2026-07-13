@@ -65,16 +65,26 @@ export function DashboardNavigation({
   ariaLabel,
   className,
   onNavigate,
+  variant = "stacked",
 }: {
   ariaLabel: string;
   className?: string;
   onNavigate?: () => void;
+  variant?: "stacked" | "tabs";
 }) {
   const pathname = usePathname();
   const activeSection = getActiveSection(pathname);
 
   return (
-    <nav aria-label={ariaLabel} className={cn("grid gap-1.5", className)}>
+    <nav
+      aria-label={ariaLabel}
+      className={cn(
+        variant === "tabs"
+          ? "flex items-center justify-start gap-0 overflow-hidden rounded-xl border bg-card shadow-sm lg:gap-1"
+          : "grid gap-1.5",
+        className,
+      )}
+    >
       {navItems.map((item) => {
         const Icon = item.icon;
         const active = item.section === activeSection;
@@ -83,20 +93,38 @@ export function DashboardNavigation({
           <Button
             asChild
             className={cn(
-              "justify-start px-3 text-muted-foreground",
-              active &&
-                "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
+              variant === "tabs"
+                ? "relative size-14 shrink-0 rounded-none p-0 text-muted-foreground hover:bg-muted/50 lg:h-14 lg:w-auto lg:px-4"
+                : "justify-start px-3 text-muted-foreground",
+              active && variant === "tabs"
+                ? "bg-transparent font-semibold text-foreground hover:bg-muted/50 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary"
+                : active &&
+                    "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
             )}
             key={item.href}
             variant="ghost"
           >
             <Link
+              aria-label={variant === "tabs" ? item.label : undefined}
               aria-current={active ? "page" : undefined}
               href={item.href}
               onNavigate={onNavigate}
+              title={variant === "tabs" ? item.label : undefined}
             >
-              <Icon aria-hidden="true" className="size-4" />
-              {item.label}
+              <Icon
+                aria-hidden="true"
+                className={cn(
+                  "size-4",
+                  variant === "tabs" && "size-5 lg:hidden",
+                )}
+              />
+              {variant === "tabs" ? (
+                <span aria-hidden="true" className="hidden lg:inline">
+                  {item.label}
+                </span>
+              ) : (
+                item.label
+              )}
             </Link>
           </Button>
         );

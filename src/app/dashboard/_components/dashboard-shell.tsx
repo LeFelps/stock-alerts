@@ -4,7 +4,6 @@ import Link from "next/link";
 import { signOutUser } from "@/app/actions";
 import { SignOutSubmitButton } from "@/components/action-submit-button";
 import { DashboardNavigation } from "./dashboard-navigation";
-import { MobileNavDrawer } from "./mobile-nav-drawer";
 
 export function DashboardShell({
   userEmail,
@@ -14,19 +13,16 @@ export function DashboardShell({
   children: ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
         <DashboardHeader userEmail={userEmail} />
 
-        <div className="grid flex-1 gap-8 py-8 lg:grid-cols-[14rem_1fr]">
-          <DesktopSidebarNav />
-
-          <section className="grid min-w-0 content-start gap-10">
-            {children}
-          </section>
+        <div className="grid flex-1 content-start gap-6 pb-8 pt-8">
+          <DashboardTabsNav />
+          <main className="grid min-w-0 content-start gap-10">{children}</main>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -46,17 +42,16 @@ function DashboardHeader({ userEmail }: { userEmail: string }) {
         <form action={signOutUser}>
           <SignOutSubmitButton />
         </form>
-        <MobileNavDrawer />
       </div>
     </header>
   );
 }
 
-function DesktopSidebarNav() {
+function DashboardTabsNav() {
   return (
-    <aside className="hidden lg:block">
-      <DashboardNavigation ariaLabel="Seções do painel" />
-    </aside>
+    <div>
+      <DashboardNavigation ariaLabel="Seções do painel" variant="tabs" />
+    </div>
   );
 }
 
