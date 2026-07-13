@@ -208,9 +208,23 @@ describe("DashboardPage", () => {
     expect(screen.queryByText("Painel protegido")).not.toBeInTheDocument();
     expect(screen.queryByText("Sessão ativa")).not.toBeInTheDocument();
     expect(screen.getByText("user@example.com")).toBeInTheDocument();
+    expect(screen.getByRole("banner")).not.toHaveClass("border-b");
+    expect(
+      screen.getByRole("navigation", { name: "Seções do painel" }),
+    ).toHaveClass(
+      "flex",
+      "justify-start",
+      "overflow-hidden",
+      "rounded-xl",
+      "bg-card",
+      "shadow-sm",
+    );
     expect(
       screen.getAllByRole("link", { name: /Monitoramento/ })[0],
     ).toHaveAttribute("href", "/dashboard");
+    expect(
+      screen.getAllByRole("link", { name: /Monitoramento/ })[0],
+    ).toHaveClass("font-semibold", "after:bg-primary", "rounded-none");
     expect(screen.getAllByRole("link", { name: /Sinais/ })[0]).toHaveAttribute(
       "href",
       "/dashboard/signals",
@@ -244,7 +258,7 @@ describe("DashboardPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("opens the mobile navigation with reduced-motion-safe transitions", async () => {
+  it("uses the tab bar as icon-only mobile navigation", async () => {
     requireCurrentProfileMock.mockResolvedValue({
       email: "user@example.com",
       profile: createProfile({ emailAlertsEnabled: true }),
@@ -255,15 +269,17 @@ describe("DashboardPage", () => {
         children: await DashboardPage(),
       }),
     );
-    const toggle = screen.getByRole("button", { name: "Abrir navegação" });
-    const toggleIcon = toggle.querySelector("svg");
+    const monitorTab = screen.getByRole("link", { name: "Monitoramento" });
 
-    expect(toggleIcon).not.toHaveClass("transition-transform");
-    fireEvent.click(toggle);
-
-    const drawer = screen.getByRole("dialog");
-    expect(drawer).toHaveAttribute("data-side", "left");
-    expect(drawer).toHaveAttribute("data-state", "open");
+    expect(monitorTab).toHaveClass("size-14", "lg:w-auto");
+    expect(monitorTab.querySelector("svg")).toHaveClass("lg:hidden");
+    expect(within(monitorTab).getByText("Monitoramento")).toHaveClass(
+      "hidden",
+      "lg:inline",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Abrir navegação" }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the watchlist rows returned for the current profile", async () => {
