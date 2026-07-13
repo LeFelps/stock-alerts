@@ -33,12 +33,19 @@ const brapiHistoricalResponseSchema = z
   })
   .passthrough();
 
+const brapiHistoricalRangeSchema = z.enum(["1d", "5d", "1mo", "3mo"]);
+
+const MAX_FETCH_ATTEMPTS = 3;
+const INITIAL_RETRY_DELAY_MS = 250;
+
 type FetchFn = typeof fetch;
+type SleepFn = (delayMs: number) => Promise<void>;
 
 type BrapiMarketDataProviderOptions = {
   apiToken?: string;
   fetchFn?: FetchFn;
-  range?: string;
+  range?: z.infer<typeof brapiHistoricalRangeSchema>;
+  sleep?: SleepFn;
 };
 
 export class MarketDataProviderError extends Error {
@@ -54,19 +61,29 @@ export class MarketDataProviderError extends Error {
 export function createBrapiMarketDataProvider({
   apiToken = process.env.BRAPI_API_TOKEN,
   fetchFn = fetch,
-  range = "1y",
+  range = "3mo",
+  sleep = wait,
 }: BrapiMarketDataProviderOptions = {}): MarketDataProvider {
+  const validatedRange = brapiHistoricalRangeSchema.parse(range);
+
   return {
     async fetchDailyPrices(symbol) {
       const url = new URL("/api/v2/stocks/historical", "https://brapi.dev");
       url.searchParams.set("symbols", symbol);
-      url.searchParams.set("range", range);
+      url.searchParams.set("range", validatedRange);
       url.searchParams.set("interval", "1d");
       url.searchParams.set("sortOrder", "asc");
 
-      const response = await fetchFn(url, {
-        cache: "no-store",
-        headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : undefined,
+      const response = await fetchWithRetry({
+        fetchFn,
+        init: {
+          cache: "no-store",
+          headers: apiToken
+            ? { Authorization: `Bearer ${apiToken}` }
+            : undefined,
+        },
+        sleep,
+        url,
       });
 
       if (!response.ok) {
@@ -89,6 +106,49 @@ export function createBrapiMarketDataProvider({
       return normalizeHistoricalResult(result, normalizedRequestedSymbol);
     },
   };
+}
+
+async function fetchWithRetry({
+  fetchFn,
+  init,
+  sleep,
+  url,
+}: {
+  fetchFn: FetchFn;
+  init: RequestInit;
+  sleep: SleepFn;
+  url: URL;
+}) {
+  for (let attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetchFn(url, init);
+
+      if (
+        !isTransientStatus(response.status) ||
+        attempt === MAX_FETCH_ATTEMPTS
+      ) {
+        return response;
+      }
+
+      await response.arrayBuffer();
+    } catch (error) {
+      if (attempt === MAX_FETCH_ATTEMPTS) {
+        throw error;
+      }
+    }
+
+    await sleep(INITIAL_RETRY_DELAY_MS * 2 ** (attempt - 1));
+  }
+
+  throw new Error("Market data retry loop exhausted unexpectedly");
+}
+
+function isTransientStatus(status: number) {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
+function wait(delayMs: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, delayMs));
 }
 
 function normalizeHistoricalResult(

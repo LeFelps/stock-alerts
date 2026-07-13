@@ -9,6 +9,7 @@ import type {
   MarketDataProvider,
   PriceSnapshotRepository,
 } from "@/features/market-data/application/ports";
+import type { PriceSnapshot } from "@/features/market-data/domain/price-snapshot";
 import { detectBuySignalsForProfile } from "@/features/signals/application/detect-buy-signals";
 import type { SignalRepository } from "@/features/signals/application/ports";
 import type { Signal } from "@/features/signals/domain/signal";
@@ -96,17 +97,21 @@ export async function runAlertChecks(
 
     for (const [symbol, symbolTargets] of targetsBySymbol) {
       try {
-        const snapshots = await marketDataProvider.fetchDailyPrices(symbol);
-        const latestSnapshot = snapshots.at(-1);
+        const fetchedSnapshots =
+          await marketDataProvider.fetchDailyPrices(symbol);
+        const latestSnapshot = fetchedSnapshots.at(-1);
 
         if (!latestSnapshot) {
           throw new Error("Market data response contained no daily prices");
         }
 
+        const storedSnapshots =
+          await priceSnapshotRepository.listForSymbol(symbol);
+        const snapshots = mergePriceHistory(storedSnapshots, fetchedSnapshots);
         const indicatorSnapshots =
           calculateIndicatorSnapshotsFromPrices(snapshots);
 
-        await priceSnapshotRepository.upsertMany(snapshots);
+        await priceSnapshotRepository.upsertMany(fetchedSnapshots);
         await indicatorSnapshotRepository.upsertMany(indicatorSnapshots);
         summary.refreshedSymbols += 1;
 
@@ -289,6 +294,36 @@ function groupTargetsBySymbol(targets: AlertCheckTarget[]) {
 
     return groups;
   }, new Map<string, AlertCheckTarget[]>());
+}
+
+function mergePriceHistory(
+  storedSnapshots: PriceSnapshot[],
+  fetchedSnapshots: PriceSnapshot[],
+) {
+  const latestFetchedSnapshot = fetchedSnapshots.at(-1);
+
+  if (!latestFetchedSnapshot) {
+    return [];
+  }
+
+  const snapshotsByMarketDate = new Map<string, PriceSnapshot>();
+
+  for (const snapshot of storedSnapshots) {
+    if (
+      snapshot.source === latestFetchedSnapshot.source &&
+      snapshot.symbol === latestFetchedSnapshot.symbol
+    ) {
+      snapshotsByMarketDate.set(snapshot.marketDate, snapshot);
+    }
+  }
+
+  for (const snapshot of fetchedSnapshots) {
+    snapshotsByMarketDate.set(snapshot.marketDate, snapshot);
+  }
+
+  return [...snapshotsByMarketDate.values()].sort((left, right) =>
+    left.marketDate.localeCompare(right.marketDate),
+  );
 }
 
 async function finishJobRun({

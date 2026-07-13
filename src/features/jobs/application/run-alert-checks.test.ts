@@ -103,6 +103,38 @@ describe("runAlertChecks", () => {
     );
   });
 
+  it("merges the fetched window with stored prices before calculating indicators", async () => {
+    const deps = createDependencies();
+    const history = createSnapshots("2026-07-13", "PETR4");
+    vi.mocked(
+      deps.alertCheckTargetRepository.listEnabledTargets,
+    ).mockResolvedValue([createTarget("profile-1", "PETR4")]);
+    vi.mocked(deps.marketDataProvider.fetchDailyPrices).mockResolvedValue(
+      history.slice(-2),
+    );
+    vi.mocked(deps.priceSnapshotRepository.listForSymbol).mockResolvedValue(
+      history.slice(0, -1),
+    );
+    vi.mocked(
+      deps.alertCheckCheckpointRepository.latestProcessedMarketDate,
+    ).mockResolvedValue("2026-07-13");
+
+    const result = await runAlertChecks({}, deps);
+
+    expect(result.ok).toBe(true);
+    expect(deps.priceSnapshotRepository.listForSymbol).toHaveBeenCalledWith(
+      "PETR4",
+    );
+    expect(
+      vi.mocked(deps.indicatorSnapshotRepository.upsertMany).mock.calls[0]?.[0],
+    ).toHaveLength(43);
+    expect(
+      vi
+        .mocked(deps.indicatorSnapshotRepository.upsertMany)
+        .mock.calls[0]?.[0].at(-1),
+    ).toEqual(expect.objectContaining({ ema42: expect.any(Number) }));
+  });
+
   it("persists historical signals and advances the checkpoint without emailing stale data", async () => {
     const deps = createDependencies();
     const historicalSignal = createSignal(
@@ -412,7 +444,7 @@ function createDependencies() {
       .mockReturnValueOnce(new Date("2026-07-14T11:00:00.000Z"))
       .mockReturnValue(new Date("2026-07-14T11:00:01.000Z")),
     priceSnapshotRepository: {
-      listForSymbol: vi.fn(),
+      listForSymbol: vi.fn().mockResolvedValue([]),
       upsertMany: vi.fn(),
     } satisfies PriceSnapshotRepository,
     signalRepository: {
