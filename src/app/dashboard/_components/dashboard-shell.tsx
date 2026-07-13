@@ -17,7 +17,7 @@ export function DashboardShell({
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
         <DashboardHeader userEmail={userEmail} />
 
-        <div className="grid flex-1 content-start gap-6 pb-8 pt-8">
+        <div className="grid flex-1 content-start gap-6 pb-8 pt-4">
           <DashboardTabsNav />
           <main className="grid min-w-0 content-start gap-10">{children}</main>
         </div>
