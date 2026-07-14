@@ -6,7 +6,7 @@ import type { MarketDataProvider } from "../application/ports";
 const brapiHistoricalPriceSchema = z
   .object({
     adjustedClose: z.number().nullable().optional(),
-    close: z.number(),
+    close: z.number().nullable(),
     date: z.number(),
     high: z.number().nullable().optional(),
     low: z.number().nullable().optional(),
@@ -30,6 +30,12 @@ const brapiHistoricalResultSchema = z
 const brapiHistoricalResponseSchema = z
   .object({
     results: z.array(brapiHistoricalResultSchema),
+  })
+  .passthrough();
+
+const brapiErrorResponseSchema = z
+  .object({
+    code: z.string(),
   })
   .passthrough();
 
@@ -98,8 +104,21 @@ export function createBrapiMarketDataProvider({
         });
 
         if (!response.ok) {
+          const responseBody = await response.text();
+
+          if (
+            isEmptyTrailingWindow({
+              hasSnapshots: snapshots.length > 0,
+              requestWindow,
+              responseBody,
+              status: response.status,
+            })
+          ) {
+            continue;
+          }
+
           throw new MarketDataProviderError("Failed to fetch market data", {
-            body: await response.text(),
+            body: responseBody,
             status: response.status,
           });
         }
@@ -210,6 +229,29 @@ function isTransientStatus(status: number) {
   return status === 429 || (status >= 500 && status <= 599);
 }
 
+function isEmptyTrailingWindow({
+  hasSnapshots,
+  requestWindow,
+  responseBody,
+  status,
+}: {
+  hasSnapshots: boolean;
+  requestWindow: z.infer<typeof brapiDateWindowSchema> | undefined;
+  responseBody: string;
+  status: number;
+}) {
+  if (status !== 404 || !requestWindow || !hasSnapshots) {
+    return false;
+  }
+
+  try {
+    const error = brapiErrorResponseSchema.safeParse(JSON.parse(responseBody));
+    return error.success && error.data.code === "NOT_FOUND";
+  } catch {
+    return false;
+  }
+}
+
 function wait(delayMs: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, delayMs));
 }
@@ -219,9 +261,9 @@ function normalizeHistoricalResult(
   symbol: string,
 ) {
   const fetchedAt = new Date();
-  const snapshots = (result.data.historicalDataPrice ?? []).map((price) =>
-    normalizeHistoricalPrice(price, fetchedAt, symbol),
-  );
+  const snapshots = (result.data.historicalDataPrice ?? [])
+    .map((price) => normalizeHistoricalPrice(price, fetchedAt, symbol))
+    .filter((snapshot): snapshot is PriceSnapshot => snapshot !== null);
 
   return [...dedupeByMarketDate(snapshots).values()].sort((left, right) =>
     left.marketDate.localeCompare(right.marketDate),
@@ -232,7 +274,11 @@ function normalizeHistoricalPrice(
   price: z.infer<typeof brapiHistoricalPriceSchema>,
   fetchedAt: Date,
   symbol: string,
-): PriceSnapshot {
+): PriceSnapshot | null {
+  if (price.close === null) {
+    return null;
+  }
+
   return {
     adjustedClose: price.adjustedClose ?? null,
     close: price.close,
