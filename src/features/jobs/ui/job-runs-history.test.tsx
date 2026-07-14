@@ -59,6 +59,8 @@ describe("JobRunsHistory", () => {
       name: "Tentar novamente",
     });
 
+    expect(retryButton).toHaveClass("h-9", "sm:ml-auto");
+
     fireEvent.change(
       screen.getByRole("textbox", { name: "Buscar na tabela" }),
       { target: { value: "Sucesso" } },
