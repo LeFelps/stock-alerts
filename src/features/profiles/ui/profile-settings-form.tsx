@@ -88,6 +88,11 @@ export function ProfileSettingsForm({
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
                 Receber emails quando uma Regra de alerta gerar um Alerta.
               </p>
+              <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                O monitoramento automático é executado de terça a sábado, às 8h
+                (horário de São Paulo), usando os dados do mercado do dia
+                anterior.
+              </p>
             </div>
           </div>
           <Badge
