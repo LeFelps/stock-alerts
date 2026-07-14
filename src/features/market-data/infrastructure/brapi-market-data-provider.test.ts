@@ -214,6 +214,35 @@ describe("brapi market data provider", () => {
     expect(snapshots).toHaveLength(2);
   });
 
+  it("reports NOT_FOUND when a middle split window has no history", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(createSuccessfulResponse(1768309200))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            code: "NOT_FOUND",
+            error: true,
+            message: "Nenhum histórico encontrado para os símbolos informados",
+          }),
+          { status: 404 },
+        ),
+      )
+      .mockResolvedValueOnce(createSuccessfulResponse(1783652400));
+    const provider = createBrapiMarketDataProvider({ fetchFn });
+
+    await expect(
+      provider.fetchDailyPrices("PETR4", {
+        endDate: "2026-07-13",
+        startDate: "2026-01-13",
+      }),
+    ).rejects.toMatchObject({
+      metadata: { status: 404 },
+      name: "MarketDataProviderError",
+    } satisfies Partial<MarketDataProviderError>);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
   it("reports NOT_FOUND when no earlier split established the symbol", async () => {
     const fetchFn = vi.fn().mockResolvedValue(
       new Response(
