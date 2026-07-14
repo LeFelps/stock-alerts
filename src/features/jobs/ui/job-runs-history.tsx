@@ -134,8 +134,10 @@ function RetryCheckAlertsButton({ disabled }: { disabled: boolean }) {
   return (
     <Button
       aria-busy={pending}
+      className="w-full sm:ml-auto sm:w-auto"
       disabled={disabled || pending}
       onClick={retry}
+      size="sm"
       type="button"
       variant="outline"
     >
