@@ -344,7 +344,7 @@ function marketDataFetchWindows(
   const bootstrapStartDate = shiftCalendarMonths(endDate, -6);
 
   if (storedSnapshots.length === 0) {
-    return splitDateWindow(bootstrapStartDate, endDate);
+    return [{ endDate, startDate: bootstrapStartDate }];
   }
 
   const storedDates = storedSnapshots
@@ -354,13 +354,16 @@ function marketDataFetchWindows(
   const latestStoredDate = storedDates.at(-1);
 
   if (!earliestStoredDate || !latestStoredDate) {
-    return splitDateWindow(bootstrapStartDate, endDate);
+    return [{ endDate, startDate: bootstrapStartDate }];
   }
 
   const windows: MarketDataDateWindow[] = [];
 
   if (earliestStoredDate > bootstrapStartDate) {
-    windows.push(...splitDateWindow(bootstrapStartDate, earliestStoredDate));
+    windows.push({
+      endDate: earliestStoredDate,
+      startDate: bootstrapStartDate,
+    });
   }
 
   const refreshStartDate =
@@ -369,26 +372,7 @@ function marketDataFetchWindows(
       : latestStoredDate;
 
   if (refreshStartDate <= endDate) {
-    windows.push(...splitDateWindow(refreshStartDate, endDate));
-  }
-
-  return windows;
-}
-
-function splitDateWindow(startDate: string, endDate: string) {
-  const windows: MarketDataDateWindow[] = [];
-  let windowStartDate = startDate;
-
-  while (windowStartDate < endDate) {
-    const maximumEndDate = shiftCalendarMonths(windowStartDate, 3);
-    const windowEndDate = maximumEndDate < endDate ? maximumEndDate : endDate;
-
-    windows.push({ endDate: windowEndDate, startDate: windowStartDate });
-    windowStartDate = windowEndDate;
-  }
-
-  if (windows.length === 0) {
-    windows.push({ endDate, startDate });
+    windows.push({ endDate, startDate: refreshStartDate });
   }
 
   return windows;

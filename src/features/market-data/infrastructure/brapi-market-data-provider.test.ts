@@ -121,21 +121,30 @@ describe("brapi market data provider", () => {
     );
   });
 
-  it("fetches a date-bounded historical window without sending range", async () => {
-    const fetchFn = vi.fn().mockResolvedValue(createSuccessfulResponse());
+  it("splits date-bounded history into at most 90 inclusive-day requests", async () => {
+    const fetchFn = vi.fn().mockImplementation(createSuccessfulResponse);
     const provider = createBrapiMarketDataProvider({ fetchFn });
 
-    await provider.fetchDailyPrices("PETR4", {
+    const snapshots = await provider.fetchDailyPrices("PETR4", {
       endDate: "2026-04-13",
       startDate: "2026-01-13",
     });
 
-    expect(fetchFn).toHaveBeenCalledWith(
+    expect(fetchFn).toHaveBeenNthCalledWith(
+      1,
       new URL(
-        "https://brapi.dev/api/v2/stocks/historical?symbols=PETR4&startDate=2026-01-13&endDate=2026-04-13&interval=1d&sortOrder=asc",
+        "https://brapi.dev/api/v2/stocks/historical?symbols=PETR4&startDate=2026-01-13&endDate=2026-04-12&interval=1d&sortOrder=asc",
       ),
       expect.any(Object),
     );
+    expect(fetchFn).toHaveBeenNthCalledWith(
+      2,
+      new URL(
+        "https://brapi.dev/api/v2/stocks/historical?symbols=PETR4&startDate=2026-04-13&endDate=2026-04-13&interval=1d&sortOrder=asc",
+      ),
+      expect.any(Object),
+    );
+    expect(snapshots).toHaveLength(1);
   });
 
   it("retries transient service failures before succeeding", async () => {

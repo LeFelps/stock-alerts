@@ -54,6 +54,10 @@ vi.mock("@/features/jobs/application/manage-job-runs", () => ({
   listRecentJobRuns: listRecentJobRunsMock,
 }));
 
+vi.mock("@/features/jobs/server/retry-check-alerts-job.action", () => ({
+  retryCheckAlertsJob: vi.fn(),
+}));
+
 vi.mock("@/features/jobs/infrastructure/drizzle-job-run-repository", () => ({
   createDrizzleJobRunRepository: createDrizzleJobRunRepositoryMock,
 }));
