@@ -33,7 +33,13 @@ describe("retryCheckAlertsJob", () => {
       type: "job-run-repository",
     });
     listRecentJobRunsMock.mockReset();
-    listRecentJobRunsMock.mockResolvedValue([{ status: "FAILED" }]);
+    listRecentJobRunsMock.mockResolvedValue([
+      {
+        eligibleMarketDate: "2026-07-17",
+        startedAt: new Date("2026-07-18T11:00:00.000Z"),
+        status: "FAILED",
+      },
+    ]);
     requireSuperProfileMock.mockReset();
     requireSuperProfileMock.mockResolvedValue({
       email: "super@example.com",
@@ -58,7 +64,9 @@ describe("retryCheckAlertsJob", () => {
       { limit: 1 },
       { jobRunRepository: { type: "job-run-repository" } },
     );
-    expect(runCheckAlertsJobMock).toHaveBeenCalledOnce();
+    expect(runCheckAlertsJobMock).toHaveBeenCalledWith({
+      eligibleMarketDate: "2026-07-17",
+    });
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard");
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/jobs");
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/signals");
@@ -66,6 +74,22 @@ describe("retryCheckAlertsJob", () => {
       "/dashboard/tickers/[symbol]",
       "page",
     );
+  });
+
+  it("derives the eligible date for failed job runs created before it was stored", async () => {
+    listRecentJobRunsMock.mockResolvedValue([
+      {
+        eligibleMarketDate: null,
+        startedAt: new Date("2026-07-18T11:00:00.000Z"),
+        status: "FAILED",
+      },
+    ]);
+
+    await retryCheckAlertsJob(retryFormData());
+
+    expect(runCheckAlertsJobMock).toHaveBeenCalledWith({
+      eligibleMarketDate: "2026-07-17",
+    });
   });
 
   it("rejects malformed requests before reading job history", async () => {

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireSuperProfile } from "@/features/profiles/server/current-profile";
 
 import { listRecentJobRuns } from "../application/manage-job-runs";
+import { eligibleMarketDateForAlertCheck } from "../domain/eligible-market-date";
 import { createDrizzleJobRunRepository } from "../infrastructure/drizzle-job-run-repository";
 import { runCheckAlertsJob } from "./check-alerts-job";
 
@@ -44,7 +45,10 @@ export async function retryCheckAlertsJob(
   }
 
   try {
-    const result = await runCheckAlertsJob();
+    const eligibleMarketDate =
+      latestJobRun.eligibleMarketDate ??
+      eligibleMarketDateForAlertCheck(latestJobRun.startedAt);
+    const result = await runCheckAlertsJob({ eligibleMarketDate });
     revalidateAlertCheckPaths();
 
     if (!result.ok) {

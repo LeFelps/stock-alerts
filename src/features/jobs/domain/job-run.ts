@@ -20,6 +20,7 @@ export type JobRunSummary = {
 export type JobRun = {
   createdAt: Date;
   durationMs: number | null;
+  eligibleMarketDate: string | null;
   error: string | null;
   finishedAt: Date | null;
   id: JobRunId;

@@ -53,6 +53,7 @@ export function createDrizzleJobRunRepository(
       const [jobRun] = await database
         .insert(jobRuns)
         .values({
+          eligibleMarketDate: command.eligibleMarketDate,
           jobName: command.jobName,
           startedAt: command.startedAt,
           status: "RUNNING",
@@ -73,6 +74,7 @@ function toJobRun(jobRun: JobRunRow): JobRun {
   return {
     createdAt: jobRun.createdAt,
     durationMs: jobRun.durationMs,
+    eligibleMarketDate: jobRun.eligibleMarketDate,
     error: jobRun.error,
     finishedAt: jobRun.finishedAt,
     id: toJobRunId(jobRun.id),

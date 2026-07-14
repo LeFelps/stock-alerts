@@ -28,6 +28,35 @@ import type {
 } from "./ports";
 
 describe("runAlertChecks", () => {
+  it("replays the original eligible market date when a failed Friday run is retried on Monday", async () => {
+    const deps = createDependencies();
+    const signal = createSignal("signal-1", "profile-1", "PETR4", "2026-07-17");
+    vi.mocked(deps.now)
+      .mockReset()
+      .mockReturnValueOnce(new Date("2026-07-20T11:00:00.000Z"))
+      .mockReturnValue(new Date("2026-07-20T11:00:01.000Z"));
+    vi.mocked(
+      deps.alertCheckTargetRepository.listEnabledTargets,
+    ).mockResolvedValue([createTarget("profile-1", "PETR4")]);
+    vi.mocked(deps.marketDataProvider.fetchDailyPrices).mockResolvedValue(
+      createSnapshots("2026-07-17", "PETR4"),
+    );
+    vi.mocked(deps.signalRepository.upsertMany).mockResolvedValue([signal]);
+
+    const result = await runAlertChecks(
+      { eligibleMarketDate: "2026-07-17" },
+      deps,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(deps.jobRunRepository.start).toHaveBeenCalledWith(
+      expect.objectContaining({ eligibleMarketDate: "2026-07-17" }),
+    );
+    expect(deps.emailDeliveryProvider.sendBuySignalDigest).toHaveBeenCalledWith(
+      expect.objectContaining({ marketDate: "2026-07-17", signals: [signal] }),
+    );
+  });
+
   it("fetches each symbol once and sends one digest across symbols for a profile", async () => {
     const deps = createDependencies();
     const targets = [
@@ -361,7 +390,54 @@ describe("runAlertChecks", () => {
     );
     expect(
       deps.alertCheckCheckpointRepository.markProcessed,
+    ).toHaveBeenCalledOnce();
+    expect(
+      deps.alertCheckCheckpointRepository.markProcessed,
+    ).toHaveBeenCalledWith({
+      marketDate: "2026-07-13",
+      profileId: toProfileId("profile-2"),
+      symbol: "PETR4",
+    });
+  });
+
+  it("retries a failed email delivery before advancing its checkpoint", async () => {
+    const deps = createDependencies();
+    const signal = createSignal("signal-1", "profile-1", "PETR4");
+    vi.mocked(
+      deps.alertCheckTargetRepository.listEnabledTargets,
+    ).mockResolvedValue([createTarget("profile-1", "PETR4")]);
+    vi.mocked(deps.marketDataProvider.fetchDailyPrices).mockResolvedValue(
+      createSnapshots("2026-07-13", "PETR4"),
+    );
+    vi.mocked(deps.signalRepository.upsertMany)
+      .mockResolvedValueOnce([signal])
+      .mockResolvedValueOnce([]);
+    vi.mocked(deps.signalRepository.findMatching).mockResolvedValue([signal]);
+    vi.mocked(deps.emailDeliveryProvider.sendBuySignalDigest)
+      .mockRejectedValueOnce(new Error("SES unavailable"))
+      .mockResolvedValueOnce({ providerMessageId: "message-2" });
+    vi.mocked(
+      deps.alertEmailDeliveryRepository.markFailedMany,
+    ).mockResolvedValueOnce([
+      createDelivery(signal.id, "FAILED", { providerError: "SES unavailable" }),
+    ]);
+
+    const failedAttempt = await runAlertChecks({}, deps);
+
+    expect(failedAttempt.ok).toBe(false);
+    expect(
+      deps.alertCheckCheckpointRepository.markProcessed,
+    ).not.toHaveBeenCalled();
+
+    const retry = await runAlertChecks({}, deps);
+
+    expect(retry.ok).toBe(true);
+    expect(
+      deps.emailDeliveryProvider.sendBuySignalDigest,
     ).toHaveBeenCalledTimes(2);
+    expect(
+      deps.alertCheckCheckpointRepository.markProcessed,
+    ).toHaveBeenCalledOnce();
   });
 
   it("retries persisted eligible signals when digest reservation fails before checkpointing", async () => {
@@ -580,6 +656,7 @@ function createJobRun(fields: Partial<JobRun> = {}): JobRun {
   return {
     createdAt: new Date("2026-07-14T11:00:00.000Z"),
     durationMs: null,
+    eligibleMarketDate: "2026-07-13",
     error: null,
     finishedAt: null,
     id: toJobRunId("job-run-1"),
