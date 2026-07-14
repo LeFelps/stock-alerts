@@ -1,4 +1,4 @@
-import { LineChart, LogIn, ShieldCheck } from "lucide-react";
+import { BellRing, ChartNoAxesCombined, ListPlus } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { signInWithGoogle } from "@/app/actions";
@@ -42,31 +42,39 @@ export default async function Home({ searchParams }: HomeProps = {}) {
 
           <div className="max-w-2xl">
             <p className="text-base leading-7 text-muted-foreground sm:text-lg">
-              Acesse seu painel protegido para acompanhar ativos, preparar
-              regras de alerta e conectar os próximos fluxos do MVP.
+              Acompanhe preços, indicadores e sinais de compra dos seus ativos
+              em um só lugar.
             </p>
           </div>
 
-          <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
-            <div className="rounded-md border bg-card p-4">
-              <ShieldCheck
+          <ol className="grid gap-3 sm:grid-cols-3">
+            <li className="grid content-start gap-2 rounded-md border bg-card p-4">
+              <ListPlus aria-hidden="true" className="size-5 text-primary" />
+              <h3 className="font-semibold">Configure</h3>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Adicione ativos à sua lista de acompanhamento e ajuste suas
+                preferências.
+              </p>
+            </li>
+            <li className="grid content-start gap-2 rounded-md border bg-card p-4">
+              <ChartNoAxesCombined
                 aria-hidden="true"
-                className="mb-3 size-5 text-primary"
+                className="size-5 text-primary"
               />
-              Sessões protegidas por conta Google.
-            </div>
-            <div className="rounded-md border bg-card p-4">
-              <LineChart
-                aria-hidden="true"
-                className="mb-3 size-5 text-primary"
-              />
-              Lista de acompanhamento preparada para dados reais.
-            </div>
-            <div className="rounded-md border bg-card p-4">
-              <LogIn aria-hidden="true" className="mb-3 size-5 text-primary" />
-              Entrada restrita por email quando configurada.
-            </div>
-          </div>
+              <h3 className="font-semibold">Monitore</h3>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Acompanhe preços, indicadores e sinais dos seus ativos.
+              </p>
+            </li>
+            <li className="grid content-start gap-2 rounded-md border bg-card p-4">
+              <BellRing aria-hidden="true" className="size-5 text-primary" />
+              <h3 className="font-semibold">Receba alertas</h3>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Receba alertas por email quando novos sinais de compra forem
+                detectados.
+              </p>
+            </li>
+          </ol>
         </section>
 
         <section className="grid content-center gap-5 rounded-lg border bg-card p-6 shadow-sm">

@@ -136,6 +136,28 @@ describe("Home", () => {
     expect(
       screen.getByRole("button", { name: "Entrar com Google" }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/próximos fluxos do MVP/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("presents the app flow", async () => {
+    authMock.mockResolvedValue(null);
+
+    render(await Home({ searchParams: Promise.resolve({}) }));
+
+    const flow = screen.getByRole("list");
+
+    expect(within(flow).getAllByRole("listitem")).toHaveLength(3);
+    expect(
+      within(flow).getByRole("heading", { name: "Configure" }),
+    ).toBeInTheDocument();
+    expect(
+      within(flow).getByRole("heading", { name: "Monitore" }),
+    ).toBeInTheDocument();
+    expect(
+      within(flow).getByRole("heading", { name: "Receba alertas" }),
+    ).toBeInTheDocument();
   });
 
   it("redirects authenticated users to the dashboard", async () => {
@@ -949,6 +971,11 @@ describe("PreferencesPage", () => {
     expect(
       screen.getByRole("checkbox", { name: /Alertas por email/ }),
     ).toBeChecked();
+    expect(
+      screen.getByText(
+        /O monitoramento automático é executado de terça a sábado, às 8h/,
+      ),
+    ).toBeInTheDocument();
   });
 });
 
