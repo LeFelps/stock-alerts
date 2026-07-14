@@ -9,7 +9,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Columns3 } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +38,7 @@ type DataTableProps<TData, TValue> = {
   getRowId?: (row: TData) => string;
   searchPlaceholder?: string;
   showColumnPicker?: boolean;
+  toolbarAction?: ReactNode;
 };
 
 export function DataTable<TData, TValue>({
@@ -48,6 +49,7 @@ export function DataTable<TData, TValue>({
   getRowId,
   searchPlaceholder = "Buscar…",
   showColumnPicker = false,
+  toolbarAction,
 }: DataTableProps<TData, TValue>) {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [globalFilter, setGlobalFilter] = useState("");
@@ -75,6 +77,7 @@ export function DataTable<TData, TValue>({
           placeholder={searchPlaceholder}
           value={globalFilter}
         />
+        {toolbarAction}
         {showColumnPicker ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

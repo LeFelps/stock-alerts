@@ -43,6 +43,7 @@ const brapiDateWindowSchema = z
     message: "Market data start date must not follow end date",
   });
 
+const BRAPI_MAX_INCLUSIVE_WINDOW_DAYS = 90;
 const MAX_FETCH_ATTEMPTS = 3;
 const INITIAL_RETRY_DELAY_MS = 250;
 
@@ -77,51 +78,97 @@ export function createBrapiMarketDataProvider({
   return {
     async fetchDailyPrices(symbol, window) {
       const validatedWindow = brapiDateWindowSchema.optional().parse(window);
-      const url = new URL("/api/v2/stocks/historical", "https://brapi.dev");
-      url.searchParams.set("symbols", symbol);
+      const requestWindows = validatedWindow
+        ? splitBrapiDateWindow(validatedWindow)
+        : [undefined];
+      const snapshots: PriceSnapshot[] = [];
 
-      if (validatedWindow) {
-        url.searchParams.set("startDate", validatedWindow.startDate);
-        url.searchParams.set("endDate", validatedWindow.endDate);
-      } else {
-        url.searchParams.set("range", validatedRange);
-      }
-
-      url.searchParams.set("interval", "1d");
-      url.searchParams.set("sortOrder", "asc");
-
-      const response = await fetchWithRetry({
-        fetchFn,
-        init: {
-          cache: "no-store",
-          headers: apiToken
-            ? { Authorization: `Bearer ${apiToken}` }
-            : undefined,
-        },
-        sleep,
-        url,
-      });
-
-      if (!response.ok) {
-        throw new MarketDataProviderError("Failed to fetch market data", {
-          body: await response.text(),
-          status: response.status,
+      for (const requestWindow of requestWindows) {
+        const url = historicalUrl(symbol, validatedRange, requestWindow);
+        const response = await fetchWithRetry({
+          fetchFn,
+          init: {
+            cache: "no-store",
+            headers: apiToken
+              ? { Authorization: `Bearer ${apiToken}` }
+              : undefined,
+          },
+          sleep,
+          url,
         });
+
+        if (!response.ok) {
+          throw new MarketDataProviderError("Failed to fetch market data", {
+            body: await response.text(),
+            status: response.status,
+          });
+        }
+
+        const normalizedRequestedSymbol = symbol.toUpperCase();
+        const body = brapiHistoricalResponseSchema.parse(await response.json());
+        const result = body.results.find((result) =>
+          matchesRequestedSymbol(result, normalizedRequestedSymbol),
+        );
+
+        if (!result) {
+          throw new MarketDataProviderError("Market data response was empty");
+        }
+
+        snapshots.push(
+          ...normalizeHistoricalResult(result, normalizedRequestedSymbol),
+        );
       }
 
-      const normalizedRequestedSymbol = symbol.toUpperCase();
-      const body = brapiHistoricalResponseSchema.parse(await response.json());
-      const result = body.results.find((result) =>
-        matchesRequestedSymbol(result, normalizedRequestedSymbol),
+      return [...dedupeByMarketDate(snapshots).values()].sort((left, right) =>
+        left.marketDate.localeCompare(right.marketDate),
       );
-
-      if (!result) {
-        throw new MarketDataProviderError("Market data response was empty");
-      }
-
-      return normalizeHistoricalResult(result, normalizedRequestedSymbol);
     },
   };
+}
+
+function historicalUrl(
+  symbol: string,
+  range: z.infer<typeof brapiHistoricalRangeSchema>,
+  window?: z.infer<typeof brapiDateWindowSchema>,
+) {
+  const url = new URL("/api/v2/stocks/historical", "https://brapi.dev");
+  url.searchParams.set("symbols", symbol);
+
+  if (window) {
+    url.searchParams.set("startDate", window.startDate);
+    url.searchParams.set("endDate", window.endDate);
+  } else {
+    url.searchParams.set("range", range);
+  }
+
+  url.searchParams.set("interval", "1d");
+  url.searchParams.set("sortOrder", "asc");
+  return url;
+}
+
+function splitBrapiDateWindow(window: z.infer<typeof brapiDateWindowSchema>) {
+  const windows: Array<z.infer<typeof brapiDateWindowSchema>> = [];
+  let windowStartDate = window.startDate;
+
+  while (windowStartDate <= window.endDate) {
+    const maximumEndDate = shiftCalendarDays(
+      windowStartDate,
+      BRAPI_MAX_INCLUSIVE_WINDOW_DAYS - 1,
+    );
+    const windowEndDate =
+      maximumEndDate < window.endDate ? maximumEndDate : window.endDate;
+
+    windows.push({ endDate: windowEndDate, startDate: windowStartDate });
+    windowStartDate = shiftCalendarDays(windowEndDate, 1);
+  }
+
+  return windows;
+}
+
+function shiftCalendarDays(calendarDate: string, days: number) {
+  const date = new Date(`${calendarDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 async function fetchWithRetry({

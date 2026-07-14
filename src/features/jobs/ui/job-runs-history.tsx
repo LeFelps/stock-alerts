@@ -1,13 +1,21 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import { Copy, LoaderCircle, RotateCcw } from "lucide-react";
+import { startTransition, useState } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatHumanDateTime } from "@/lib/format-date";
 
 import type { JobRun } from "../domain/job-run";
+import {
+  retryCheckAlertsJob,
+  type RetryCheckAlertsJobResult,
+} from "../server/retry-check-alerts-job.action";
 
 export function JobRunsHistory({ jobRuns }: { jobRuns: JobRun[] }) {
   if (jobRuns.length === 0) {
@@ -26,6 +34,9 @@ export function JobRunsHistory({ jobRuns }: { jobRuns: JobRun[] }) {
       data={jobRuns}
       getRowId={(jobRun) => jobRun.id}
       searchPlaceholder="Buscar execuções…"
+      toolbarAction={
+        <RetryCheckAlertsButton disabled={jobRuns.at(0)?.status !== "FAILED"} />
+      }
     />
   );
 }
@@ -76,14 +87,7 @@ const jobRunColumns: ColumnDef<JobRun>[] = [
   },
   {
     accessorFn: (jobRun) => jobRun.error ?? "Sem erro",
-    cell: ({ row }) => (
-      <span
-        className="block max-w-xs truncate text-muted-foreground"
-        title={row.original.error ?? "Sem erro"}
-      >
-        {row.original.error ?? "Sem erro"}
-      </span>
-    ),
+    cell: ({ row }) => <JobRunError error={row.original.error} />,
     header: "Erro",
     id: "error",
   },
@@ -99,6 +103,100 @@ const jobRunColumnLabels = {
   status: "Status",
   symbols: "Ativos",
 };
+
+function RetryCheckAlertsButton({ disabled }: { disabled: boolean }) {
+  const [pending, setPending] = useState(false);
+
+  function retry() {
+    if (disabled || pending) return;
+    setPending(true);
+
+    startTransition(async () => {
+      try {
+        const formData = new FormData();
+        formData.set("intent", "retry");
+        const result = await retryCheckAlertsJob(formData);
+
+        if (result.status === "success") {
+          toast.success("Execução concluída com sucesso.");
+          return;
+        }
+
+        toast.error(retryErrorMessage(result.error));
+      } catch {
+        toast.error("Não foi possível repetir a execução. Tente novamente.");
+      } finally {
+        setPending(false);
+      }
+    });
+  }
+
+  return (
+    <Button
+      aria-busy={pending}
+      disabled={disabled || pending}
+      onClick={retry}
+      type="button"
+      variant="outline"
+    >
+      {pending ? (
+        <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+      ) : (
+        <RotateCcw aria-hidden="true" className="size-4" />
+      )}
+      {pending ? "Repetindo…" : "Tentar novamente"}
+    </Button>
+  );
+}
+
+function JobRunError({ error }: { error: string | null }) {
+  const label = error ?? "Sem erro";
+
+  async function copyError() {
+    if (!error) return;
+
+    try {
+      await navigator.clipboard.writeText(error);
+      toast.success("Erro copiado.");
+    } catch {
+      toast.error("Não foi possível copiar o erro.");
+    }
+  }
+
+  return (
+    <div className="flex max-w-xs items-center gap-1">
+      <span
+        className="min-w-0 flex-1 truncate text-muted-foreground"
+        title={label}
+      >
+        {label}
+      </span>
+      {error ? (
+        <Button
+          aria-label="Copiar erro da execução"
+          className="shrink-0"
+          onClick={copyError}
+          size="icon-sm"
+          title="Copiar erro"
+          type="button"
+          variant="ghost"
+        >
+          <Copy aria-hidden="true" className="size-4" />
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function retryErrorMessage(
+  error: Extract<RetryCheckAlertsJobResult, { status: "error" }>["error"],
+) {
+  if (error === "not_retryable") {
+    return "A execução mais recente não pode mais ser repetida.";
+  }
+
+  return "A nova execução também falhou. Consulte o erro mais recente.";
+}
 
 function formatStatus(jobRun: JobRun) {
   switch (jobRun.status) {

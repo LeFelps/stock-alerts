@@ -103,7 +103,7 @@ describe("runAlertChecks", () => {
     );
   });
 
-  it("bootstraps six months of prices in two capped date windows", async () => {
+  it("requests six months of prices when bootstrapping a symbol", async () => {
     const deps = createDependencies();
     vi.mocked(
       deps.alertCheckTargetRepository.listEnabledTargets,
@@ -123,13 +123,9 @@ describe("runAlertChecks", () => {
     expect(deps.marketDataProvider.fetchDailyPrices).toHaveBeenNthCalledWith(
       1,
       "PETR4",
-      { endDate: "2026-04-13", startDate: "2026-01-13" },
+      { endDate: "2026-07-13", startDate: "2026-01-13" },
     );
-    expect(deps.marketDataProvider.fetchDailyPrices).toHaveBeenNthCalledWith(
-      2,
-      "PETR4",
-      { endDate: "2026-07-13", startDate: "2026-04-13" },
-    );
+    expect(deps.marketDataProvider.fetchDailyPrices).toHaveBeenCalledTimes(1);
   });
 
   it("merges the fetched window with stored prices before calculating indicators", async () => {
