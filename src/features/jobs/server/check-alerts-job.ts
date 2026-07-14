@@ -10,20 +10,19 @@ import { createDrizzleAlertCheckCheckpointRepository } from "../infrastructure/d
 import { createDrizzleAlertCheckTargetRepository } from "../infrastructure/drizzle-alert-check-target-repository";
 import { createDrizzleJobRunRepository } from "../infrastructure/drizzle-job-run-repository";
 
-export async function runCheckAlertsJob() {
-  return runAlertChecks(
-    {},
-    {
-      alertCheckCheckpointRepository:
-        createDrizzleAlertCheckCheckpointRepository(),
-      alertCheckTargetRepository: createDrizzleAlertCheckTargetRepository(),
-      alertEmailDeliveryRepository: createDrizzleAlertEmailDeliveryRepository(),
-      emailDeliveryProvider: createConfiguredEmailDeliveryProvider(),
-      indicatorSnapshotRepository: createDrizzleIndicatorSnapshotRepository(),
-      jobRunRepository: createDrizzleJobRunRepository(),
-      marketDataProvider: createConfiguredMarketDataProvider(),
-      priceSnapshotRepository: createDrizzlePriceSnapshotRepository(),
-      signalRepository: createDrizzleSignalRepository(),
-    },
-  );
+export async function runCheckAlertsJob(
+  command: { eligibleMarketDate?: string } = {},
+) {
+  return runAlertChecks(command, {
+    alertCheckCheckpointRepository:
+      createDrizzleAlertCheckCheckpointRepository(),
+    alertCheckTargetRepository: createDrizzleAlertCheckTargetRepository(),
+    alertEmailDeliveryRepository: createDrizzleAlertEmailDeliveryRepository(),
+    emailDeliveryProvider: createConfiguredEmailDeliveryProvider(),
+    indicatorSnapshotRepository: createDrizzleIndicatorSnapshotRepository(),
+    jobRunRepository: createDrizzleJobRunRepository(),
+    marketDataProvider: createConfiguredMarketDataProvider(),
+    priceSnapshotRepository: createDrizzlePriceSnapshotRepository(),
+    signalRepository: createDrizzleSignalRepository(),
+  });
 }

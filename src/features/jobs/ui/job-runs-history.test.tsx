@@ -90,6 +90,7 @@ function createJobRun(fields: Partial<JobRun> = {}): JobRun {
   return {
     createdAt: new Date("2026-07-14T11:00:00.000Z"),
     durationMs: 1000,
+    eligibleMarketDate: "2026-07-13",
     error: "Provider unavailable",
     finishedAt: new Date("2026-07-14T11:00:01.000Z"),
     id: toJobRunId("job-run-1"),

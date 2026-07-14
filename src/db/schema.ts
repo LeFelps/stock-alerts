@@ -193,6 +193,7 @@ export const jobRuns = pgTable(
       .$defaultFn(() => crypto.randomUUID()),
     jobName: text("job_name").notNull(),
     status: text("status").notNull(),
+    eligibleMarketDate: date("eligible_market_date"),
     startedAt: timestamp("started_at", { mode: "date" }).notNull(),
     finishedAt: timestamp("finished_at", { mode: "date" }),
     durationMs: integer("duration_ms"),

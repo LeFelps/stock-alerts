@@ -1,0 +1,1 @@
+ALTER TABLE "job_runs" ADD COLUMN "eligible_market_date" date;

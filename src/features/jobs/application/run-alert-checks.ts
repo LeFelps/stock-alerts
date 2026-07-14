@@ -41,6 +41,10 @@ type RunAlertChecksDependencies = {
   signalRepository: SignalRepository;
 };
 
+type RunAlertChecksCommand = {
+  eligibleMarketDate?: string;
+};
+
 export type RunAlertChecksResult =
   | {
       jobRun: JobRun;
@@ -53,7 +57,7 @@ export type RunAlertChecksResult =
     };
 
 export async function runAlertChecks(
-  _command: Record<string, never>,
+  command: RunAlertChecksCommand,
   {
     alertCheckCheckpointRepository,
     alertCheckTargetRepository,
@@ -68,9 +72,11 @@ export async function runAlertChecks(
   }: RunAlertChecksDependencies,
 ): Promise<RunAlertChecksResult> {
   const startedAt = now();
-  const eligibleMarketDate = eligibleMarketDateForAlertCheck(startedAt);
+  const eligibleMarketDate =
+    command.eligibleMarketDate ?? eligibleMarketDateForAlertCheck(startedAt);
   const summary = emptyJobRunSummary();
   const jobRun = await jobRunRepository.start({
+    eligibleMarketDate,
     jobName: "CHECK_ALERTS",
     startedAt,
     summary,
@@ -231,6 +237,7 @@ export async function runAlertChecks(
           errors.push(
             `${target.profileId}: email: ${outcome.deliveries[0]?.providerError ?? "Unknown delivery failure"}`,
           );
+          continue;
         }
 
         for (const checkpoint of checkpoints) {

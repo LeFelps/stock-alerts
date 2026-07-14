@@ -32,6 +32,7 @@ export type AlertCheckCheckpointRepository = {
 };
 
 export type StartJobRunCommand = {
+  eligibleMarketDate: string;
   jobName: JobRunName;
   startedAt: Date;
   summary: JobRunSummary;

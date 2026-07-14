@@ -1,4 +1,4 @@
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
 import { alertEmailDeliveries } from "@/db/schema";
@@ -98,7 +98,17 @@ export function createDrizzleAlertEmailDeliveryRepository(
             status: "PENDING",
           })),
         )
-        .onConflictDoNothing({
+        .onConflictDoUpdate({
+          set: {
+            provider: command.provider,
+            providerError: null,
+            providerMessageId: null,
+            sentAt: null,
+            skippedReason: null,
+            status: "PENDING",
+            updatedAt: new Date(),
+          },
+          setWhere: eq(alertEmailDeliveries.status, "FAILED"),
           target: [
             alertEmailDeliveries.signalId,
             alertEmailDeliveries.recipientEmail,
