@@ -122,7 +122,9 @@ describe("brapi market data provider", () => {
   });
 
   it("splits date-bounded history into at most 90 inclusive-day requests", async () => {
-    const fetchFn = vi.fn().mockImplementation(createSuccessfulResponse);
+    const fetchFn = vi
+      .fn()
+      .mockImplementation(() => createSuccessfulResponse());
     const provider = createBrapiMarketDataProvider({ fetchFn });
 
     const snapshots = await provider.fetchDailyPrices("PETR4", {
@@ -145,6 +147,95 @@ describe("brapi market data provider", () => {
       expect.any(Object),
     );
     expect(snapshots).toHaveLength(1);
+  });
+
+  it("discards incomplete historical rows whose close is null", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          results: [
+            {
+              data: {
+                historicalDataPrice: [
+                  { close: 10.89, date: 1769691600 },
+                  {
+                    adjustedClose: null,
+                    close: null,
+                    date: 1769778000,
+                    high: null,
+                    low: null,
+                    open: null,
+                    volume: null,
+                  },
+                  { close: 10.83, date: 1770037200 },
+                ],
+              },
+              requestedSymbol: "AZUL3",
+              symbol: "AZUL3",
+            },
+          ],
+        }),
+      ),
+    );
+    const provider = createBrapiMarketDataProvider({ fetchFn });
+
+    const snapshots = await provider.fetchDailyPrices("AZUL3");
+
+    expect(snapshots).toHaveLength(2);
+    expect(snapshots.map((snapshot) => snapshot.marketDate)).toEqual([
+      "2026-01-29",
+      "2026-02-02",
+    ]);
+  });
+
+  it("keeps successful split data when the trailing window has no history", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(createSuccessfulResponse(1768309200))
+      .mockResolvedValueOnce(createSuccessfulResponse(1776085200))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            code: "NOT_FOUND",
+            error: true,
+            message: "Nenhum histórico encontrado para os símbolos informados",
+          }),
+          { status: 404 },
+        ),
+      );
+    const provider = createBrapiMarketDataProvider({ fetchFn });
+
+    const snapshots = await provider.fetchDailyPrices("PETR4", {
+      endDate: "2026-07-13",
+      startDate: "2026-01-13",
+    });
+
+    expect(fetchFn).toHaveBeenCalledTimes(3);
+    expect(snapshots).toHaveLength(2);
+  });
+
+  it("reports NOT_FOUND when no earlier split established the symbol", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: "NOT_FOUND",
+          error: true,
+          message: "Nenhum histórico encontrado para os símbolos informados",
+        }),
+        { status: 404 },
+      ),
+    );
+    const provider = createBrapiMarketDataProvider({ fetchFn });
+
+    await expect(
+      provider.fetchDailyPrices("UNKNOWN3", {
+        endDate: "2026-07-13",
+        startDate: "2026-07-12",
+      }),
+    ).rejects.toMatchObject({
+      metadata: { status: 404 },
+      name: "MarketDataProviderError",
+    } satisfies Partial<MarketDataProviderError>);
   });
 
   it("retries transient service failures before succeeding", async () => {
@@ -198,13 +289,13 @@ describe("brapi market data provider", () => {
   });
 });
 
-function createSuccessfulResponse() {
+function createSuccessfulResponse(date = 1756126800) {
   return new Response(
     JSON.stringify({
       results: [
         {
           data: {
-            historicalDataPrice: [{ close: 30.65, date: 1756126800 }],
+            historicalDataPrice: [{ close: 30.65, date }],
           },
           requestedSymbol: "PETR4",
           symbol: "PETR4",
