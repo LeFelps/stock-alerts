@@ -89,7 +89,7 @@ export function createBrapiMarketDataProvider({
         : [undefined];
       const snapshots: PriceSnapshot[] = [];
 
-      for (const requestWindow of requestWindows) {
+      for (const [requestIndex, requestWindow] of requestWindows.entries()) {
         const url = historicalUrl(symbol, validatedRange, requestWindow);
         const response = await fetchWithRetry({
           fetchFn,
@@ -109,6 +109,7 @@ export function createBrapiMarketDataProvider({
           if (
             isEmptyTrailingWindow({
               hasSnapshots: snapshots.length > 0,
+              isLastWindow: requestIndex === requestWindows.length - 1,
               requestWindow,
               responseBody,
               status: response.status,
@@ -231,16 +232,18 @@ function isTransientStatus(status: number) {
 
 function isEmptyTrailingWindow({
   hasSnapshots,
+  isLastWindow,
   requestWindow,
   responseBody,
   status,
 }: {
   hasSnapshots: boolean;
+  isLastWindow: boolean;
   requestWindow: z.infer<typeof brapiDateWindowSchema> | undefined;
   responseBody: string;
   status: number;
 }) {
-  if (status !== 404 || !requestWindow || !hasSnapshots) {
+  if (status !== 404 || !requestWindow || !hasSnapshots || !isLastWindow) {
     return false;
   }
 
