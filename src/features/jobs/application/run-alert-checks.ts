@@ -104,8 +104,9 @@ export async function runAlertChecks(
 
     for (const [symbol, symbolTargets] of targetsBySymbol) {
       try {
-        const storedSnapshots =
-          await priceSnapshotRepository.listForSymbol(symbol);
+        const storedSnapshots = (
+          await priceSnapshotRepository.listForSymbol(symbol)
+        ).filter((snapshot) => snapshot.marketDate <= eligibleMarketDate);
         const fetchWindows = marketDataFetchWindows(
           storedSnapshots,
           eligibleMarketDate,
@@ -118,13 +119,13 @@ export async function runAlertChecks(
           );
         }
 
-        const latestSnapshot = fetchedSnapshots.at(-1);
+        const snapshots = mergePriceHistory(storedSnapshots, fetchedSnapshots);
+        const latestSnapshot = snapshots.at(-1);
 
         if (!latestSnapshot) {
           throw new Error("Market data response contained no daily prices");
         }
 
-        const snapshots = mergePriceHistory(storedSnapshots, fetchedSnapshots);
         const indicatorSnapshots =
           calculateIndicatorSnapshotsFromPrices(snapshots);
 
@@ -318,9 +319,9 @@ function mergePriceHistory(
   storedSnapshots: PriceSnapshot[],
   fetchedSnapshots: PriceSnapshot[],
 ) {
-  const latestFetchedSnapshot = fetchedSnapshots.at(-1);
+  const referenceSnapshot = fetchedSnapshots.at(-1) ?? storedSnapshots.at(-1);
 
-  if (!latestFetchedSnapshot) {
+  if (!referenceSnapshot) {
     return [];
   }
 
@@ -328,8 +329,8 @@ function mergePriceHistory(
 
   for (const snapshot of storedSnapshots) {
     if (
-      snapshot.source === latestFetchedSnapshot.source &&
-      snapshot.symbol === latestFetchedSnapshot.symbol
+      snapshot.source === referenceSnapshot.source &&
+      snapshot.symbol === referenceSnapshot.symbol
     ) {
       snapshotsByMarketDate.set(snapshot.marketDate, snapshot);
     }
@@ -378,7 +379,7 @@ function marketDataFetchWindows(
       ? bootstrapStartDate
       : latestStoredDate;
 
-  if (refreshStartDate <= endDate) {
+  if (refreshStartDate < endDate) {
     windows.push({ endDate, startDate: refreshStartDate });
   }
 
