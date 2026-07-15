@@ -12,7 +12,7 @@ describe("createDrizzleAlertEmailDeliveryRepository", () => {
       {
         createdAt: new Date("2026-07-14T11:00:00.000Z"),
         id: "delivery-1",
-        provider: "ses",
+        provider: "resend",
         providerError: null,
         providerMessageId: null,
         recipientEmail: "user@example.com",
@@ -31,7 +31,7 @@ describe("createDrizzleAlertEmailDeliveryRepository", () => {
     } as never);
 
     await repository.reserveMany({
-      provider: "ses",
+      provider: "resend",
       recipientEmail: "user@example.com",
       signalIds: [toSignalId("signal-1")],
     });
@@ -39,7 +39,7 @@ describe("createDrizzleAlertEmailDeliveryRepository", () => {
     expect(onConflictDoUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         set: expect.objectContaining({
-          provider: "ses",
+          provider: "resend",
           providerError: null,
           providerMessageId: null,
           sentAt: null,

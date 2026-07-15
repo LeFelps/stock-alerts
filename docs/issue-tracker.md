@@ -19,13 +19,13 @@ operations.
 
 The repository uses these mappings for common triage states:
 
-| Triage state | GitHub label |
-| --- | --- |
-| Ready for agent implementation | `type:afk` |
-| Requires human review or a decision | `type:hitl` |
-| Needs maintainer evaluation | `needs-triage` |
-| Waiting for reporter information | `needs-info` |
-| Will not be actioned | `wontfix` |
+| Triage state                        | GitHub label   |
+| ----------------------------------- | -------------- |
+| Ready for agent implementation      | `type:afk`     |
+| Requires human review or a decision | `type:hitl`    |
+| Needs maintainer evaluation         | `needs-triage` |
+| Waiting for reporter information    | `needs-info`   |
+| Will not be actioned                | `wontfix`      |
 
 The final three labels may not exist until the workflow needs them. Do not add
 them to implementation-ready issues preemptively.

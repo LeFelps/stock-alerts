@@ -361,7 +361,7 @@ describe("runAlertChecks", () => {
       .mockResolvedValueOnce([firstSignal])
       .mockResolvedValueOnce([secondSignal]);
     vi.mocked(deps.emailDeliveryProvider.sendBuySignalDigest)
-      .mockRejectedValueOnce(new Error("SES unavailable"))
+      .mockRejectedValueOnce(new Error("Resend unavailable"))
       .mockResolvedValueOnce({ providerMessageId: "message-2" });
     vi.mocked(
       deps.alertEmailDeliveryRepository.markFailedMany,
@@ -371,7 +371,7 @@ describe("runAlertChecks", () => {
           toSignalId(deliveryId.replace("delivery-", "")),
           "FAILED",
           {
-            providerError: "SES unavailable",
+            providerError: "Resend unavailable",
           },
         ),
       ),
@@ -414,12 +414,14 @@ describe("runAlertChecks", () => {
       .mockResolvedValueOnce([]);
     vi.mocked(deps.signalRepository.findMatching).mockResolvedValue([signal]);
     vi.mocked(deps.emailDeliveryProvider.sendBuySignalDigest)
-      .mockRejectedValueOnce(new Error("SES unavailable"))
+      .mockRejectedValueOnce(new Error("Resend unavailable"))
       .mockResolvedValueOnce({ providerMessageId: "message-2" });
     vi.mocked(
       deps.alertEmailDeliveryRepository.markFailedMany,
     ).mockResolvedValueOnce([
-      createDelivery(signal.id, "FAILED", { providerError: "SES unavailable" }),
+      createDelivery(signal.id, "FAILED", {
+        providerError: "Resend unavailable",
+      }),
     ]);
 
     const failedAttempt = await runAlertChecks({}, deps);
@@ -526,9 +528,9 @@ function createDependencies() {
         ),
     } satisfies AlertEmailDeliveryRepository,
     emailDeliveryProvider: {
-      name: "ses" as const,
+      name: "resend" as const,
       sendBuySignalDigest: vi.fn().mockResolvedValue({
-        providerMessageId: "ses-message-1",
+        providerMessageId: "resend-message-1",
       }),
     },
     indicatorSnapshotRepository: {
@@ -602,9 +604,9 @@ function createDelivery(
   return {
     createdAt: new Date("2026-07-14T11:00:00.000Z"),
     id: toAlertEmailDeliveryId(`delivery-${signalId}`),
-    provider: status === "SKIPPED" ? null : ("ses" as const),
+    provider: status === "SKIPPED" ? null : ("resend" as const),
     providerError: fields.providerError ?? null,
-    providerMessageId: status === "SENT" ? "ses-message-1" : null,
+    providerMessageId: status === "SENT" ? "resend-message-1" : null,
     recipientEmail: "user@example.com",
     sentAt: status === "SENT" ? new Date("2026-07-14T11:00:00.000Z") : null,
     signalId,

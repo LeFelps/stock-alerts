@@ -81,12 +81,8 @@
           "name": "accounts_user_id_users_id_fk",
           "tableFrom": "accounts",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -94,10 +90,7 @@
       "compositePrimaryKeys": {
         "accounts_provider_provider_account_id_pk": {
           "name": "accounts_provider_provider_account_id_pk",
-          "columns": [
-            "provider",
-            "provider_account_id"
-          ]
+          "columns": ["provider", "provider_account_id"]
         }
       },
       "uniqueConstraints": {},
@@ -164,12 +157,8 @@
           "name": "alert_checkpoints_profile_id_profiles_id_fk",
           "tableFrom": "alert_checkpoints",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "profile_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["profile_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -177,10 +166,7 @@
       "compositePrimaryKeys": {
         "alert_checkpoints_profile_id_symbol_pk": {
           "name": "alert_checkpoints_profile_id_symbol_pk",
-          "columns": [
-            "profile_id",
-            "symbol"
-          ]
+          "columns": ["profile_id", "symbol"]
         }
       },
       "uniqueConstraints": {},
@@ -325,12 +311,8 @@
           "name": "alert_email_deliveries_signal_id_signals_id_fk",
           "tableFrom": "alert_email_deliveries",
           "tableTo": "signals",
-          "columnsFrom": [
-            "signal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["signal_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -429,10 +411,7 @@
       "compositePrimaryKeys": {
         "indicator_snapshots_symbol_market_date_pk": {
           "name": "indicator_snapshots_symbol_market_date_pk",
-          "columns": [
-            "symbol",
-            "market_date"
-          ]
+          "columns": ["symbol", "market_date"]
         }
       },
       "uniqueConstraints": {},
@@ -671,11 +650,7 @@
       "compositePrimaryKeys": {
         "price_snapshots_symbol_market_date_source_pk": {
           "name": "price_snapshots_symbol_market_date_source_pk",
-          "columns": [
-            "symbol",
-            "market_date",
-            "source"
-          ]
+          "columns": ["symbol", "market_date", "source"]
         }
       },
       "uniqueConstraints": {},
@@ -735,12 +710,8 @@
           "name": "profiles_user_id_users_id_fk",
           "tableFrom": "profiles",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -750,9 +721,7 @@
         "profiles_user_id_unique": {
           "name": "profiles_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id"
-          ]
+          "columns": ["user_id"]
         }
       },
       "policies": {},
@@ -788,12 +757,8 @@
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -919,12 +884,8 @@
           "name": "signals_profile_id_profiles_id_fk",
           "tableFrom": "signals",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "profile_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["profile_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -977,9 +938,7 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -1014,10 +973,7 @@
       "compositePrimaryKeys": {
         "verification_tokens_identifier_token_pk": {
           "name": "verification_tokens_identifier_token_pk",
-          "columns": [
-            "identifier",
-            "token"
-          ]
+          "columns": ["identifier", "token"]
         }
       },
       "uniqueConstraints": {},
@@ -1130,12 +1086,8 @@
           "name": "watchlist_items_profile_id_profiles_id_fk",
           "tableFrom": "watchlist_items",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "profile_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["profile_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1151,10 +1103,7 @@
     "public.profile_role": {
       "name": "profile_role",
       "schema": "public",
-      "values": [
-        "USER",
-        "SUPER"
-      ]
+      "values": ["USER", "SUPER"]
     }
   },
   "schemas": {},

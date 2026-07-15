@@ -3,40 +3,69 @@ import { describe, expect, it } from "vitest";
 import { createConfiguredEmailDeliveryProvider } from "./email-delivery-provider-factory";
 
 describe("email delivery provider factory", () => {
-  it("creates the SES provider when email delivery config is present", () => {
+  it("creates the Resend provider from project-specific configuration", () => {
     const provider = createConfiguredEmailDeliveryProvider({
-      ALERT_EMAIL_FROM: "alerts@example.com",
-      AWS_REGION: "us-east-1",
-      EMAIL_PROVIDER: "ses",
+      ALERT_EMAIL_FROM: "alerts@fellcor.com",
+      EMAIL_PROVIDER: "resend",
+      RESEND_API_KEY: "re_stock_alerts",
     });
 
-    expect(provider).toHaveProperty("name", "ses");
+    expect(provider).toHaveProperty("name", "resend");
     expect(provider).toHaveProperty("sendBuySignalDigest");
   });
 
-  it("defaults to SES but requires the sender address", () => {
-    expect(() =>
-      createConfiguredEmailDeliveryProvider({
-        AWS_REGION: "us-east-1",
-      }),
-    ).toThrow("ALERT_EMAIL_FROM is required for email delivery");
+  it("defaults to Resend", () => {
+    const provider = createConfiguredEmailDeliveryProvider({
+      ALERT_EMAIL_FROM: "alerts@fellcor.com",
+      RESEND_API_KEY: "re_stock_alerts",
+    });
+
+    expect(provider.name).toBe("resend");
   });
 
-  it("requires an AWS region for SES", () => {
+  it("requires a Resend API key", () => {
     expect(() =>
       createConfiguredEmailDeliveryProvider({
-        ALERT_EMAIL_FROM: "alerts@example.com",
-        EMAIL_PROVIDER: "ses",
+        ALERT_EMAIL_FROM: "alerts@fellcor.com",
       }),
-    ).toThrow("AWS_REGION is required for email delivery");
+    ).toThrow("RESEND_API_KEY is required for email delivery");
+  });
+
+  it("rejects a malformed Resend API key", () => {
+    expect(() =>
+      createConfiguredEmailDeliveryProvider({
+        ALERT_EMAIL_FROM: "alerts@fellcor.com",
+        RESEND_API_KEY: "stock-alerts-key",
+      }),
+    ).toThrow("RESEND_API_KEY must be a Resend API key");
+  });
+
+  it("requires a valid sender address", () => {
+    expect(() =>
+      createConfiguredEmailDeliveryProvider({
+        ALERT_EMAIL_FROM: "not-an-email",
+        RESEND_API_KEY: "re_stock_alerts",
+      }),
+    ).toThrow("ALERT_EMAIL_FROM must be a valid email address");
+  });
+
+  it("requires the sender address to use the exact fellcor.com domain", () => {
+    for (const fromEmail of ["alerts@example.com", "alerts@mail.fellcor.com"]) {
+      expect(() =>
+        createConfiguredEmailDeliveryProvider({
+          ALERT_EMAIL_FROM: fromEmail,
+          RESEND_API_KEY: "re_stock_alerts",
+        }),
+      ).toThrow("ALERT_EMAIL_FROM must use the exact fellcor.com domain");
+    }
   });
 
   it("rejects unsupported providers", () => {
     expect(() =>
       createConfiguredEmailDeliveryProvider({
-        ALERT_EMAIL_FROM: "alerts@example.com",
-        AWS_REGION: "us-east-1",
-        EMAIL_PROVIDER: "unknown",
+        ALERT_EMAIL_FROM: "alerts@fellcor.com",
+        EMAIL_PROVIDER: "ses",
+        RESEND_API_KEY: "re_stock_alerts",
       }),
     ).toThrow();
   });

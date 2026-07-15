@@ -22,7 +22,7 @@ describe("deliverBuySignalDigest", () => {
     const reserved = createDelivery(second);
     vi.mocked(repository.reserveMany).mockResolvedValue([reserved]);
     vi.mocked(provider.sendBuySignalDigest).mockResolvedValue({
-      providerMessageId: "ses-message-1",
+      providerMessageId: "resend-message-1",
     });
     vi.mocked(repository.markSentMany).mockResolvedValue([
       createDelivery(second, { status: "SENT" }),
@@ -43,7 +43,7 @@ describe("deliverBuySignalDigest", () => {
     );
 
     expect(repository.reserveMany).toHaveBeenCalledWith({
-      provider: "ses",
+      provider: "resend",
       recipientEmail: "user@example.com",
       signalIds: [first.id, second.id],
     });
@@ -54,13 +54,13 @@ describe("deliverBuySignalDigest", () => {
     });
     expect(repository.markSentMany).toHaveBeenCalledWith({
       deliveryIds: [reserved.id],
-      providerMessageId: "ses-message-1",
+      providerMessageId: "resend-message-1",
       sentAt: new Date("2026-07-14T11:00:00.000Z"),
     });
     expect(result.type).toBe("sent");
   });
 
-  it("records disabled digest candidates as skipped without calling SES", async () => {
+  it("records disabled digest candidates as skipped without calling Resend", async () => {
     const repository = createRepository();
     const provider = createProvider();
     const signal = createSignal("signal-1", "PETR4");
@@ -90,18 +90,18 @@ describe("deliverBuySignalDigest", () => {
     expect(result.type).toBe("skipped");
   });
 
-  it("marks every reserved delivery failed when SES rejects the digest", async () => {
+  it("marks every reserved delivery failed when Resend rejects the digest", async () => {
     const repository = createRepository();
     const provider = createProvider();
     const signal = createSignal("signal-1", "PETR4");
     const reserved = createDelivery(signal);
     vi.mocked(repository.reserveMany).mockResolvedValue([reserved]);
     vi.mocked(provider.sendBuySignalDigest).mockRejectedValue(
-      new Error("SES unavailable"),
+      new Error("Resend unavailable"),
     );
     vi.mocked(repository.markFailedMany).mockResolvedValue([
       createDelivery(signal, {
-        providerError: "SES unavailable",
+        providerError: "Resend unavailable",
         status: "FAILED",
       }),
     ]);
@@ -121,7 +121,7 @@ describe("deliverBuySignalDigest", () => {
 
     expect(repository.markFailedMany).toHaveBeenCalledWith({
       deliveryIds: [reserved.id],
-      providerError: "SES unavailable",
+      providerError: "Resend unavailable",
     });
     expect(result.type).toBe("failed");
   });
@@ -181,7 +181,7 @@ function createRepository(): AlertEmailDeliveryRepository {
 
 function createProvider(): EmailDeliveryProvider {
   return {
-    name: "ses",
+    name: "resend",
     sendBuySignalDigest: vi.fn(),
   };
 }
@@ -205,7 +205,7 @@ function createDelivery(
   return {
     createdAt: new Date("2026-07-14T11:00:00.000Z"),
     id: toAlertEmailDeliveryId(`delivery-${signal.id}`),
-    provider: "ses",
+    provider: "resend",
     providerError: null,
     providerMessageId: null,
     recipientEmail: "user@example.com",
