@@ -5,15 +5,33 @@ import { createResendEmailDeliveryProvider } from "./resend-email-delivery-provi
 
 type ProviderEnv = Partial<Record<string, string | undefined>>;
 
+const senderEmailAddressSchema = z.string().email();
+
 const emailDeliveryConfigSchema = z.object({
   ALERT_EMAIL_FROM: z
     .string({ error: "ALERT_EMAIL_FROM is required for email delivery" })
     .trim()
-    .email("ALERT_EMAIL_FROM must be a valid email address")
-    .refine(
-      (email) => email.toLowerCase().endsWith("@fellcor.com"),
-      "ALERT_EMAIL_FROM must use the exact fellcor.com domain",
-    ),
+    .superRefine((sender, context) => {
+      const emailAddress = extractSenderEmailAddress(sender);
+
+      if (
+        !emailAddress ||
+        !senderEmailAddressSchema.safeParse(emailAddress).success
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "ALERT_EMAIL_FROM must be a valid email address",
+        });
+        return;
+      }
+
+      if (emailAddress.split("@").at(-1)?.toLowerCase() !== "fellcor.com") {
+        context.addIssue({
+          code: "custom",
+          message: "ALERT_EMAIL_FROM must use the exact fellcor.com domain",
+        });
+      }
+    }),
   EMAIL_PROVIDER: z.enum(["resend"]).default("resend"),
   RESEND_API_KEY: z
     .string({ error: "RESEND_API_KEY is required for email delivery" })
@@ -31,4 +49,10 @@ export function createConfiguredEmailDeliveryProvider(
     apiKey: config.RESEND_API_KEY,
     fromEmail: config.ALERT_EMAIL_FROM,
   });
+}
+
+function extractSenderEmailAddress(sender: string) {
+  if (!sender.includes("<") && !sender.includes(">")) return sender;
+
+  return sender.match(/^[^<>]+\s+<([^<>]+)>$/)?.[1]?.trim() ?? null;
 }

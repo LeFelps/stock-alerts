@@ -5,7 +5,7 @@ import { createConfiguredEmailDeliveryProvider } from "./email-delivery-provider
 describe("email delivery provider factory", () => {
   it("creates the Resend provider from project-specific configuration", () => {
     const provider = createConfiguredEmailDeliveryProvider({
-      ALERT_EMAIL_FROM: "alerts@fellcor.com",
+      ALERT_EMAIL_FROM: "Stock Alerts <noreply.stock-alerts@fellcor.com>",
       EMAIL_PROVIDER: "resend",
       RESEND_API_KEY: "re_stock_alerts",
     });
@@ -41,16 +41,25 @@ describe("email delivery provider factory", () => {
   });
 
   it("requires a valid sender address", () => {
-    expect(() =>
-      createConfiguredEmailDeliveryProvider({
-        ALERT_EMAIL_FROM: "not-an-email",
-        RESEND_API_KEY: "re_stock_alerts",
-      }),
-    ).toThrow("ALERT_EMAIL_FROM must be a valid email address");
+    for (const fromEmail of [
+      "not-an-email",
+      "Stock Alerts <not-an-email>",
+      "Stock Alerts <alerts@fellcor.com",
+    ]) {
+      expect(() =>
+        createConfiguredEmailDeliveryProvider({
+          ALERT_EMAIL_FROM: fromEmail,
+          RESEND_API_KEY: "re_stock_alerts",
+        }),
+      ).toThrow("ALERT_EMAIL_FROM must be a valid email address");
+    }
   });
 
   it("requires the sender address to use the exact fellcor.com domain", () => {
-    for (const fromEmail of ["alerts@example.com", "alerts@mail.fellcor.com"]) {
+    for (const fromEmail of [
+      "alerts@example.com",
+      "Stock Alerts <alerts@mail.fellcor.com>",
+    ]) {
       expect(() =>
         createConfiguredEmailDeliveryProvider({
           ALERT_EMAIL_FROM: fromEmail,

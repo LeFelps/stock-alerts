@@ -20,7 +20,7 @@ describe("Resend buy signal digest delivery", () => {
     const provider = createResendEmailDeliveryProvider(
       {
         apiKey: "re_project_key",
-        fromEmail: "alerts@fellcor.com",
+        fromEmail: "Stock Alerts <noreply.stock-alerts@fellcor.com>",
       },
       { send } as ResendEmailClient,
     );
@@ -34,7 +34,7 @@ describe("Resend buy signal digest delivery", () => {
       providerMessageId: "resend-message-1",
     });
     expect(send).toHaveBeenCalledWith({
-      from: "alerts@fellcor.com",
+      from: "Stock Alerts <noreply.stock-alerts@fellcor.com>",
       subject: "[ALERTA] Sugestões de compra — 13/07/2026",
       text: buildDigestTextBody(email),
       to: ["user@example.com"],
