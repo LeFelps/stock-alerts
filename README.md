@@ -70,21 +70,33 @@ MARKET_DATA_PROVIDER=brapi
 BRAPI_API_TOKEN=
 ```
 
-BUY signal digest delivery uses Amazon SES. A run sends at most one digest per
+BUY signal digest delivery uses Resend. A run sends at most one digest per
 eligible Perfil, containing only signals for the expected market date. Delivery
 attempts remain recorded per signal and recipient email, including skipped
 sends when a Perfil has email alerts disabled.
 
 ```bash
-EMAIL_PROVIDER=ses
-AWS_REGION=
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-ALERT_EMAIL_FROM=
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=
+ALERT_EMAIL_FROM=alerts@fellcor.com
 ```
 
-`ALERT_EMAIL_FROM` must be an SES-verified sender address or identity. The AWS
-credentials must be allowed to call `ses:SendEmail` in `AWS_REGION`.
+Before deployment, verify the root `fellcor.com` domain in the shared Resend
+account and wait for it to reach the verified state. Create a new API key for
+Stock Alerts with sending-only permission; do not reuse the Unseal project key.
+Store that key as `RESEND_API_KEY` in the deployment environment.
+The application rejects missing keys and values that do not use Resend's `re_`
+prefix.
+
+`ALERT_EMAIL_FROM` must be a bare email address whose domain is exactly
+`fellcor.com`, such as `alerts@fellcor.com`. Subdomains such as
+`alerts@mail.fellcor.com` and sender display-name syntax are rejected by runtime
+validation. `EMAIL_PROVIDER` may be omitted because it defaults to `resend`.
+
+Stock Alerts shares the Resend account's sending quotas and domain reputation
+with the account's other projects. Monitor usage, bounces, complaints, and
+reputation across the account before increasing alert volume; a project-specific
+API key isolates credentials but does not isolate those shared limits.
 
 The scheduled alert check route is available at
 `/api/cron/check-alerts`. `CRON_SECRET` is required in every environment that

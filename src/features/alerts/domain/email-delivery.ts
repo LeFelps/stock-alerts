@@ -7,13 +7,16 @@ export type AlertEmailDeliveryStatus =
   | "SENT"
   | "FAILED"
   | "SKIPPED";
-export type EmailDeliveryProviderName = "ses";
+export type EmailDeliveryProviderName = "resend";
+export type RecordedEmailDeliveryProviderName =
+  | EmailDeliveryProviderName
+  | "ses";
 export type AlertEmailSkippedReason = "EMAIL_ALERTS_DISABLED";
 
 export type AlertEmailDelivery = {
   createdAt: Date;
   id: AlertEmailDeliveryId;
-  provider: EmailDeliveryProviderName | null;
+  provider: RecordedEmailDeliveryProviderName | null;
   providerError: string | null;
   providerMessageId: string | null;
   recipientEmail: string;

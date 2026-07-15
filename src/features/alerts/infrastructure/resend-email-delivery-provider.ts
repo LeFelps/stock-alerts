@@ -1,44 +1,40 @@
-import { SendEmailCommand, SESClient } from "@aws-sdk/client-ses";
+import {
+  Resend,
+  type CreateEmailOptions,
+  type CreateEmailResponse,
+} from "resend";
 
 import type { EmailDeliveryProvider } from "../application/ports";
 import type { BuySignalDigestEmail } from "../domain/email-delivery";
 
-type SesEmailDeliveryProviderConfig = {
+type ResendEmailDeliveryProviderConfig = {
+  apiKey: string;
   fromEmail: string;
-  region: string;
 };
 
-export function createSesEmailDeliveryProvider({
-  fromEmail,
-  region,
-}: SesEmailDeliveryProviderConfig): EmailDeliveryProvider {
-  const client = new SESClient({ region });
+export type ResendEmailClient = {
+  send(email: CreateEmailOptions): Promise<CreateEmailResponse>;
+};
 
+export function createResendEmailDeliveryProvider(
+  { apiKey, fromEmail }: ResendEmailDeliveryProviderConfig,
+  client: ResendEmailClient = new Resend(apiKey).emails,
+): EmailDeliveryProvider {
   return {
-    name: "ses",
+    name: "resend",
     async sendBuySignalDigest(email) {
-      const result = await client.send(
-        new SendEmailCommand({
-          Destination: {
-            ToAddresses: [email.recipientEmail],
-          },
-          Message: {
-            Body: {
-              Text: {
-                Charset: "UTF-8",
-                Data: buildDigestTextBody(email),
-              },
-            },
-            Subject: {
-              Charset: "UTF-8",
-              Data: buildDigestSubject(email.marketDate),
-            },
-          },
-          Source: fromEmail,
-        }),
-      );
+      const { data, error } = await client.send({
+        from: fromEmail,
+        subject: buildDigestSubject(email.marketDate),
+        text: buildDigestTextBody(email),
+        to: [email.recipientEmail],
+      });
 
-      return { providerMessageId: result.MessageId };
+      if (error) {
+        throw new Error(formatResendError(error));
+      }
+
+      return { providerMessageId: data.id };
     },
   };
 }
@@ -95,4 +91,14 @@ function formatSignalReason(
     case "EMA6_CROSSED_ABOVE_EMA13_WHILE_ABOVE_EMA42":
       return "MME6 cruzou acima da MME13 enquanto estava acima da MME42.";
   }
+}
+
+function formatResendError(error: {
+  message: string;
+  name: string;
+  statusCode: number | null;
+}) {
+  const status = error.statusCode ? `, HTTP ${error.statusCode}` : "";
+
+  return `Resend email delivery failed (${error.name}${status}): ${error.message}`;
 }
