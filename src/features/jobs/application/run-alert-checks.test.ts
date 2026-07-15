@@ -255,6 +255,30 @@ describe("runAlertChecks", () => {
     });
   });
 
+  it("fails when a requested backfill returns no usable prices", async () => {
+    const deps = createDependencies();
+    vi.mocked(
+      deps.alertCheckTargetRepository.listEnabledTargets,
+    ).mockResolvedValue([createTarget("profile-1", "PETR4")]);
+    vi.mocked(deps.priceSnapshotRepository.listForSymbol).mockResolvedValue(
+      createSnapshots("2026-07-13", "PETR4"),
+    );
+    vi.mocked(deps.marketDataProvider.fetchDailyPrices).mockResolvedValue([]);
+
+    const result = await runAlertChecks({}, deps);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        error: "PETR4: Market data response contained no daily prices",
+        ok: false,
+      }),
+    );
+    expect(deps.marketDataProvider.fetchDailyPrices).toHaveBeenCalledOnce();
+    expect(
+      deps.alertCheckCheckpointRepository.markProcessed,
+    ).not.toHaveBeenCalled();
+  });
+
   it("persists historical signals and advances the checkpoint without emailing stale data", async () => {
     const deps = createDependencies();
     const historicalSignal = createSignal(

@@ -114,9 +114,16 @@ export async function runAlertChecks(
         const fetchedSnapshots: PriceSnapshot[] = [];
 
         for (const window of fetchWindows) {
-          fetchedSnapshots.push(
-            ...(await marketDataProvider.fetchDailyPrices(symbol, window)),
+          const windowSnapshots = await marketDataProvider.fetchDailyPrices(
+            symbol,
+            window,
           );
+
+          if (windowSnapshots.length === 0) {
+            throw new Error("Market data response contained no daily prices");
+          }
+
+          fetchedSnapshots.push(...windowSnapshots);
         }
 
         const snapshots = mergePriceHistory(storedSnapshots, fetchedSnapshots);
