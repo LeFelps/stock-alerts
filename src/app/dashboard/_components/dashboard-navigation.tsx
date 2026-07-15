@@ -113,6 +113,7 @@ export function DashboardNavigation({
                 aria-current={active ? "page" : undefined}
                 href={item.href}
                 onNavigate={onNavigate}
+                prefetch
                 title={variant === "tabs" ? item.label : undefined}
               >
                 <Icon

@@ -200,6 +200,10 @@ describe("watchlist actions", () => {
     );
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard");
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/settings");
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/dashboard/tickers",
+      "layout",
+    );
   });
 
   it("returns not found when an owned mutation target is missing", async () => {

@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -7,17 +10,17 @@ import type { WatchlistItem } from "../domain/watchlist-item";
 import { AssetLogo } from "./asset-logo";
 
 export function TickerSymbolNavigation({
-  currentSymbol,
   items,
 }: {
-  currentSymbol: string;
-  items: WatchlistItem[];
+  items: Array<Pick<WatchlistItem, "id" | "logoUrl" | "symbol">>;
 }) {
+  const pathname = usePathname();
+
   return (
     <nav aria-label="Ativos acompanhados" className="min-w-0">
       <ul className="flex gap-2 overflow-x-auto pb-2">
         {items.map((item) => {
-          const current = item.symbol === currentSymbol;
+          const current = pathname === `/dashboard/tickers/${item.symbol}`;
 
           return (
             <li key={item.id}>
@@ -28,9 +31,10 @@ export function TickerSymbolNavigation({
                   buttonVariants({
                     variant: current ? "secondary" : "ghost",
                   }),
-                  "h-auto min-w-16 flex-col gap-1 px-2 py-2",
+                  "h-auto min-w-16 flex-col gap-1.5 px-2 py-2",
                 )}
                 href={`/dashboard/tickers/${item.symbol}`}
+                prefetch
               >
                 <span className="mt-1">
                   <AssetLogo item={item} />

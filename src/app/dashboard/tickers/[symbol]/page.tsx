@@ -1,5 +1,3 @@
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -9,7 +7,6 @@ import { createDrizzlePriceSnapshotRepository } from "@/features/market-data/inf
 import { TickerDetail } from "@/features/market-data/ui/ticker-detail";
 import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
 import { createDrizzleWatchlistRepository } from "@/features/watchlist/infrastructure/drizzle-watchlist-repository";
-import { TickerSymbolNavigation } from "@/features/watchlist/ui/ticker-symbol-navigation";
 
 const symbolSchema = z
   .string()
@@ -32,13 +29,10 @@ export default async function TickerPage({
   const symbol = parsedSymbol.data;
   const currentProfile = await requireCurrentProfile();
   const watchlistRepository = createDrizzleWatchlistRepository();
-  const [watchlistItem, watchlistItems] = await Promise.all([
-    watchlistRepository.findBySymbol({
-      profileId: currentProfile.profile.id,
-      symbol,
-    }),
-    watchlistRepository.listForProfile(currentProfile.profile.id),
-  ]);
+  const watchlistItem = await watchlistRepository.findBySymbol({
+    profileId: currentProfile.profile.id,
+    symbol,
+  });
 
   if (!watchlistItem) {
     notFound();
@@ -50,27 +44,17 @@ export default async function TickerPage({
   ]);
 
   return (
-    <section className="grid gap-8">
-      <div className="grid gap-3">
-        <Link
-          className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          href="/dashboard"
-        >
-          <ArrowLeft aria-hidden="true" className="size-4" />
-          Voltar
-        </Link>
-        <TickerSymbolNavigation currentSymbol={symbol} items={watchlistItems} />
-        <SectionHeader
-          title={`Detalhes de ${symbol}`}
-          description="Histórico de preços, médias móveis exponenciais e dados brutos salvos para depuração."
-        />
-      </div>
+    <div className="grid gap-8">
+      <SectionHeader
+        title={`Detalhes de ${symbol}`}
+        description="Histórico de preços, médias móveis exponenciais e dados brutos salvos para depuração."
+      />
       <div className="grid gap-6">
         <TickerDetail
           indicatorSnapshots={indicatorSnapshots}
           priceSnapshots={priceSnapshots}
         />
       </div>
-    </section>
+    </div>
   );
 }

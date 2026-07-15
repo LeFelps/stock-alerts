@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { toProfileId } from "@/features/profiles/domain/profile";
 
@@ -9,11 +9,14 @@ import {
 } from "../domain/watchlist-item";
 import { TickerSymbolNavigation } from "./ticker-symbol-navigation";
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/dashboard/tickers/PETR4",
+}));
+
 describe("TickerSymbolNavigation", () => {
   it("links every profile symbol and identifies the current one", () => {
     render(
       <TickerSymbolNavigation
-        currentSymbol="PETR4"
         items={[createItem("KNCR11"), createItem("PETR4")]}
       />,
     );

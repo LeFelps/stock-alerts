@@ -22,7 +22,6 @@ const listIndicatorSnapshotsForSymbolMock = vi.hoisted(() => vi.fn());
 const listRecentJobRunsMock = vi.hoisted(() => vi.fn());
 const latestIndicatorsBySymbolMock = vi.hoisted(() => vi.fn());
 const listPriceSnapshotsForSymbolMock = vi.hoisted(() => vi.fn());
-const listTickerWatchlistItemsMock = vi.hoisted(() => vi.fn());
 const listSignalsForProfileMock = vi.hoisted(() => vi.fn());
 const listWatchlistItemsForProfileMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
@@ -209,11 +208,9 @@ describe("DashboardPage", () => {
     createDrizzleWatchlistRepositoryMock.mockReset();
     createDrizzleWatchlistRepositoryMock.mockReturnValue({
       findBySymbol: findWatchlistItemBySymbolMock,
-      listForProfile: listTickerWatchlistItemsMock,
       type: "watchlist-repository",
     });
     findWatchlistItemBySymbolMock.mockReset();
-    listTickerWatchlistItemsMock.mockReset();
     listIndicatorSnapshotsForSymbolMock.mockReset();
     listIndicatorSnapshotsForSymbolMock.mockResolvedValue([]);
     latestIndicatorsBySymbolMock.mockReset();
@@ -444,11 +441,9 @@ describe("TickerPage", () => {
     createDrizzleWatchlistRepositoryMock.mockReset();
     createDrizzleWatchlistRepositoryMock.mockReturnValue({
       findBySymbol: findWatchlistItemBySymbolMock,
-      listForProfile: listTickerWatchlistItemsMock,
       type: "watchlist-repository",
     });
     findWatchlistItemBySymbolMock.mockReset();
-    listTickerWatchlistItemsMock.mockReset();
     listIndicatorSnapshotsForSymbolMock.mockReset();
     listPriceSnapshotsForSymbolMock.mockReset();
     notFoundMock.mockClear();
@@ -473,10 +468,6 @@ describe("TickerPage", () => {
       updatedAt: new Date("2026-01-01T00:00:00.000Z"),
     };
     findWatchlistItemBySymbolMock.mockResolvedValue(watchlistItem);
-    listTickerWatchlistItemsMock.mockResolvedValue([
-      watchlistItem,
-      { ...watchlistItem, id: "item-2", symbol: "VALE3" },
-    ]);
     listPriceSnapshotsForSymbolMock.mockResolvedValue([
       {
         adjustedClose: 30.25,
@@ -539,13 +530,6 @@ describe("TickerPage", () => {
     expect(
       screen.getByRole("heading", { name: "Detalhes de PETR4" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Voltar" })).toHaveAttribute(
-      "href",
-      "/dashboard",
-    );
-    expect(
-      screen.getByRole("link", { name: "Ver detalhes de VALE3" }),
-    ).toHaveAttribute("href", "/dashboard/tickers/VALE3");
     expect(screen.getByText("Último preço")).toBeInTheDocument();
     expect(screen.getByText("Última atualização")).toBeInTheDocument();
     expect(screen.getByText("MME6")).toBeInTheDocument();

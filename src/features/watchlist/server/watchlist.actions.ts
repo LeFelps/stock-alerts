@@ -140,6 +140,7 @@ export async function deleteWatchlistItem(
 function revalidateWatchlistRoutes(...symbols: Array<string | undefined>) {
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/tickers", "layout");
 
   for (const symbol of new Set(symbols.filter(Boolean))) {
     revalidatePath(`/dashboard/tickers/${symbol}`);
