@@ -76,4 +76,34 @@ describe("refreshMissingAssetLogos", () => {
     expect(assetCatalogProvider.resolveSymbol).toHaveBeenCalledTimes(1);
     expect(assetLogoRefreshRepository.updateMissingLogo).not.toHaveBeenCalled();
   });
+
+  it("rotates a capped batch daily so unresolved leaders cannot starve later symbols", async () => {
+    const assetCatalogProvider: AssetCatalogProvider = {
+      resolveSymbol: vi.fn().mockResolvedValue({ status: "unavailable" }),
+    };
+    const assetLogoRefreshRepository: AssetLogoRefreshRepository = {
+      listMissingLogoSymbols: vi
+        .fn()
+        .mockResolvedValue(["A11", "B11", "C11", "D11"]),
+      updateMissingLogo: vi.fn(),
+    };
+
+    await refreshMissingAssetLogos(
+      { limit: 2 },
+      {
+        assetCatalogProvider,
+        assetLogoRefreshRepository,
+        now: () => new Date("1970-01-02T12:00:00.000Z"),
+      },
+    );
+
+    expect(assetCatalogProvider.resolveSymbol).toHaveBeenNthCalledWith(
+      1,
+      "C11",
+    );
+    expect(assetCatalogProvider.resolveSymbol).toHaveBeenNthCalledWith(
+      2,
+      "D11",
+    );
+  });
 });
