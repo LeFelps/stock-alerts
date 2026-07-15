@@ -193,6 +193,68 @@ describe("runAlertChecks", () => {
     ).toEqual(expect.objectContaining({ ema42: expect.any(Number) }));
   });
 
+  it("reuses stored prices when a retry already has the eligible market date", async () => {
+    const deps = createDependencies();
+    vi.mocked(
+      deps.alertCheckTargetRepository.listEnabledTargets,
+    ).mockResolvedValue([createTarget("profile-1", "PETR4")]);
+    vi.mocked(deps.priceSnapshotRepository.listForSymbol).mockResolvedValue(
+      createSnapshots("2026-07-13", "PETR4", 182),
+    );
+    vi.mocked(deps.marketDataProvider.fetchDailyPrices).mockRejectedValue(
+      new Error("Redundant repeat-run fetch"),
+    );
+    vi.mocked(deps.signalRepository.upsertMany).mockResolvedValue([
+      createSignal("signal-1", "profile-1", "PETR4"),
+    ]);
+
+    const result = await runAlertChecks({}, deps);
+
+    expect(result.ok).toBe(true);
+    expect(deps.marketDataProvider.fetchDailyPrices).not.toHaveBeenCalled();
+    expect(
+      deps.alertCheckCheckpointRepository.markProcessed,
+    ).toHaveBeenCalledWith({
+      marketDate: "2026-07-13",
+      profileId: "profile-1",
+      symbol: "PETR4",
+    });
+  });
+
+  it("bounds stored prices to the original eligible date on retry", async () => {
+    const deps = createDependencies();
+    vi.mocked(
+      deps.alertCheckTargetRepository.listEnabledTargets,
+    ).mockResolvedValue([createTarget("profile-1", "PETR4")]);
+    vi.mocked(deps.priceSnapshotRepository.listForSymbol).mockResolvedValue(
+      createSnapshots("2026-07-14", "PETR4", 183),
+    );
+    vi.mocked(deps.marketDataProvider.fetchDailyPrices).mockRejectedValue(
+      new Error("Retry should not request newer prices"),
+    );
+    vi.mocked(deps.signalRepository.upsertMany).mockResolvedValue([]);
+
+    const result = await runAlertChecks(
+      { eligibleMarketDate: "2026-07-13" },
+      deps,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(deps.marketDataProvider.fetchDailyPrices).not.toHaveBeenCalled();
+    expect(
+      vi
+        .mocked(deps.indicatorSnapshotRepository.upsertMany)
+        .mock.calls[0]?.[0].at(-1),
+    ).toEqual(expect.objectContaining({ marketDate: "2026-07-13" }));
+    expect(
+      deps.alertCheckCheckpointRepository.markProcessed,
+    ).toHaveBeenCalledWith({
+      marketDate: "2026-07-13",
+      profileId: "profile-1",
+      symbol: "PETR4",
+    });
+  });
+
   it("persists historical signals and advances the checkpoint without emailing stale data", async () => {
     const deps = createDependencies();
     const historicalSignal = createSignal(
@@ -204,6 +266,9 @@ describe("runAlertChecks", () => {
     vi.mocked(
       deps.alertCheckTargetRepository.listEnabledTargets,
     ).mockResolvedValue([createTarget("profile-1", "PETR4")]);
+    vi.mocked(deps.priceSnapshotRepository.listForSymbol).mockResolvedValue(
+      createSnapshots("2026-07-09", "PETR4", 181),
+    );
     vi.mocked(deps.marketDataProvider.fetchDailyPrices).mockResolvedValue(
       createSnapshots("2026-07-10", "PETR4"),
     );
