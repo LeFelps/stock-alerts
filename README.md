@@ -78,7 +78,7 @@ sends when a Perfil has email alerts disabled.
 ```bash
 EMAIL_PROVIDER=resend
 RESEND_API_KEY=
-ALERT_EMAIL_FROM=alerts@fellcor.com
+ALERT_EMAIL_FROM="Stock Alerts <noreply.stock-alerts@fellcor.com>"
 ```
 
 Before deployment, verify the root `fellcor.com` domain in the shared Resend
@@ -88,10 +88,12 @@ Store that key as `RESEND_API_KEY` in the deployment environment.
 The application rejects missing keys and values that do not use Resend's `re_`
 prefix.
 
-`ALERT_EMAIL_FROM` must be a bare email address whose domain is exactly
-`fellcor.com`, such as `alerts@fellcor.com`. Subdomains such as
-`alerts@mail.fellcor.com` and sender display-name syntax are rejected by runtime
-validation. `EMAIL_PROVIDER` may be omitted because it defaults to `resend`.
+`ALERT_EMAIL_FROM` accepts either a bare address or Resend's friendly-name
+format, such as `Stock Alerts <noreply.stock-alerts@fellcor.com>`. The mailbox
+domain must be exactly `fellcor.com`; subdomains such as
+`alerts@mail.fellcor.com` are rejected by runtime validation. Quote a
+friendly-name value in environment files because it contains spaces.
+`EMAIL_PROVIDER` may be omitted because it defaults to `resend`.
 
 Stock Alerts shares the Resend account's sending quotas and domain reputation
 with the account's other projects. Monitor usage, bounces, complaints, and
