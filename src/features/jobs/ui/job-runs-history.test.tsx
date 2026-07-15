@@ -46,6 +46,25 @@ describe("JobRunsHistory", () => {
     expect(toastSuccessMock).toHaveBeenCalledWith("Erro copiado.");
   });
 
+  it("shows the complete error and explains ignored targets on hover", async () => {
+    const error = "PETR3: Failed to fetch market data (status 400)";
+    render(<JobRunsHistory jobRuns={[createJobRun({ error })]} />);
+
+    fireEvent.pointerEnter(screen.getByLabelText("Ver erro completo"));
+    expect(
+      await screen.findByText(error, { selector: "p" }),
+    ).toBeInTheDocument();
+
+    fireEvent.pointerEnter(
+      screen.getByRole("button", { name: "O que significa Ignorados?" }),
+    );
+    expect(
+      await screen.findByText(
+        /cujo pregão mais recente já havia sido processado/,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("keeps retry available from the latest failed run while filtering rows", async () => {
     render(
       <JobRunsHistory

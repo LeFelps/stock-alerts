@@ -22,6 +22,7 @@ const listIndicatorSnapshotsForSymbolMock = vi.hoisted(() => vi.fn());
 const listRecentJobRunsMock = vi.hoisted(() => vi.fn());
 const latestIndicatorsBySymbolMock = vi.hoisted(() => vi.fn());
 const listPriceSnapshotsForSymbolMock = vi.hoisted(() => vi.fn());
+const listTickerWatchlistItemsMock = vi.hoisted(() => vi.fn());
 const listSignalsForProfileMock = vi.hoisted(() => vi.fn());
 const listWatchlistItemsForProfileMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() =>
@@ -208,9 +209,11 @@ describe("DashboardPage", () => {
     createDrizzleWatchlistRepositoryMock.mockReset();
     createDrizzleWatchlistRepositoryMock.mockReturnValue({
       findBySymbol: findWatchlistItemBySymbolMock,
+      listForProfile: listTickerWatchlistItemsMock,
       type: "watchlist-repository",
     });
     findWatchlistItemBySymbolMock.mockReset();
+    listTickerWatchlistItemsMock.mockReset();
     listIndicatorSnapshotsForSymbolMock.mockReset();
     listIndicatorSnapshotsForSymbolMock.mockResolvedValue([]);
     latestIndicatorsBySymbolMock.mockReset();
@@ -441,9 +444,11 @@ describe("TickerPage", () => {
     createDrizzleWatchlistRepositoryMock.mockReset();
     createDrizzleWatchlistRepositoryMock.mockReturnValue({
       findBySymbol: findWatchlistItemBySymbolMock,
+      listForProfile: listTickerWatchlistItemsMock,
       type: "watchlist-repository",
     });
     findWatchlistItemBySymbolMock.mockReset();
+    listTickerWatchlistItemsMock.mockReset();
     listIndicatorSnapshotsForSymbolMock.mockReset();
     listPriceSnapshotsForSymbolMock.mockReset();
     notFoundMock.mockClear();
@@ -456,7 +461,7 @@ describe("TickerPage", () => {
       email: "user@example.com",
       profile: createProfile({ emailAlertsEnabled: true }),
     });
-    findWatchlistItemBySymbolMock.mockResolvedValue({
+    const watchlistItem = {
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       longName: "Petrobras",
       logoUrl: null,
@@ -466,7 +471,12 @@ describe("TickerPage", () => {
       profileId: "profile-1",
       symbol: "PETR4",
       updatedAt: new Date("2026-01-01T00:00:00.000Z"),
-    });
+    };
+    findWatchlistItemBySymbolMock.mockResolvedValue(watchlistItem);
+    listTickerWatchlistItemsMock.mockResolvedValue([
+      watchlistItem,
+      { ...watchlistItem, id: "item-2", symbol: "VALE3" },
+    ]);
     listPriceSnapshotsForSymbolMock.mockResolvedValue([
       {
         adjustedClose: 30.25,
@@ -533,6 +543,9 @@ describe("TickerPage", () => {
       "href",
       "/dashboard",
     );
+    expect(
+      screen.getByRole("link", { name: "Ver detalhes de VALE3" }),
+    ).toHaveAttribute("href", "/dashboard/tickers/VALE3");
     expect(screen.getByText("Último preço")).toBeInTheDocument();
     expect(screen.getByText("Última atualização")).toBeInTheDocument();
     expect(screen.getByText("MME6")).toBeInTheDocument();
@@ -568,6 +581,40 @@ describe("TickerPage", () => {
         name: "Gráfico de candles da oscilação de preços",
       }),
     ).toBeInTheDocument();
+    fireEvent.pointerEnter(
+      screen.getByLabelText(
+        "Exibir detalhes de 02/01/2026 no gráfico de médias",
+      ),
+    );
+    const emaTooltip = screen.getByRole("tooltip", {
+      name: "Detalhes do gráfico em 02/01/2026",
+    });
+    expect(within(emaTooltip).getByText("MME 13")).toBeVisible();
+    expect(within(emaTooltip).getByText("R$ 29,75")).toBeVisible();
+    fireEvent.pointerLeave(
+      screen.getByRole("img", {
+        name: "Gráfico de linhas das médias móveis exponenciais",
+      }),
+    );
+    fireEvent.pointerEnter(
+      screen.getByLabelText(
+        "Exibir detalhes de 02/01/2026 no gráfico de preços",
+      ),
+    );
+    expect(
+      within(
+        screen.getByRole("tooltip", {
+          name: "Detalhes do gráfico em 02/01/2026",
+        }),
+      ).getByText("Abertura"),
+    ).toBeVisible();
+    expect(
+      within(
+        screen.getByRole("tooltip", {
+          name: "Detalhes do gráfico em 02/01/2026",
+        }),
+      ).getByText("R$ 30,50"),
+    ).toBeVisible();
     expect(screen.queryByRole("button", { name: /atualizar/i })).toBeNull();
   });
 

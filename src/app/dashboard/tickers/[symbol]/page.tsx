@@ -9,6 +9,7 @@ import { createDrizzlePriceSnapshotRepository } from "@/features/market-data/inf
 import { TickerDetail } from "@/features/market-data/ui/ticker-detail";
 import { requireCurrentProfile } from "@/features/profiles/server/current-profile";
 import { createDrizzleWatchlistRepository } from "@/features/watchlist/infrastructure/drizzle-watchlist-repository";
+import { TickerSymbolNavigation } from "@/features/watchlist/ui/ticker-symbol-navigation";
 
 const symbolSchema = z
   .string()
@@ -30,10 +31,14 @@ export default async function TickerPage({
 
   const symbol = parsedSymbol.data;
   const currentProfile = await requireCurrentProfile();
-  const watchlistItem = await createDrizzleWatchlistRepository().findBySymbol({
-    profileId: currentProfile.profile.id,
-    symbol,
-  });
+  const watchlistRepository = createDrizzleWatchlistRepository();
+  const [watchlistItem, watchlistItems] = await Promise.all([
+    watchlistRepository.findBySymbol({
+      profileId: currentProfile.profile.id,
+      symbol,
+    }),
+    watchlistRepository.listForProfile(currentProfile.profile.id),
+  ]);
 
   if (!watchlistItem) {
     notFound();
@@ -54,6 +59,7 @@ export default async function TickerPage({
           <ArrowLeft aria-hidden="true" className="size-4" />
           Voltar
         </Link>
+        <TickerSymbolNavigation currentSymbol={symbol} items={watchlistItems} />
         <SectionHeader
           title={`Detalhes de ${symbol}`}
           description="Histórico de preços, médias móveis exponenciais e dados brutos salvos para depuração."
