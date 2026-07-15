@@ -58,7 +58,11 @@ const jobRunColumns: ColumnDef<JobRun>[] = [
       <CenteredCell>
         <Badge
           variant={
-            row.original.status === "FAILED" ? "destructive" : "secondary"
+            row.original.status === "FAILED"
+              ? "destructive"
+              : row.original.status === "SUCCESS"
+                ? "success"
+                : "secondary"
           }
         >
           {formatStatus(row.original)}

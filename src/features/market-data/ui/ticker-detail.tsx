@@ -155,10 +155,13 @@ function TechnicalSignal({ outlook }: { outlook: TechnicalOutlook }) {
     HOLD: "Manter",
     SELL: "Vender",
   };
-  const suggestionStyles: Record<TechnicalOutlook["suggestion"], string> = {
-    BUY: "border-transparent bg-emerald-600 text-white",
-    HOLD: "border-transparent bg-muted text-foreground",
-    SELL: "border-transparent bg-red-600 text-white",
+  const suggestionVariants: Record<
+    TechnicalOutlook["suggestion"],
+    "buy" | "destructive" | "secondary"
+  > = {
+    BUY: "buy",
+    HOLD: "secondary",
+    SELL: "destructive",
   };
 
   return (
@@ -171,7 +174,7 @@ function TechnicalSignal({ outlook }: { outlook: TechnicalOutlook }) {
       </h3>
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground">Sugestão</span>
-        <Badge className={suggestionStyles[outlook.suggestion]}>
+        <Badge variant={suggestionVariants[outlook.suggestion]}>
           {suggestionLabels[outlook.suggestion]}
         </Badge>
       </div>

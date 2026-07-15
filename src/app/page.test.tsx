@@ -360,7 +360,7 @@ describe("DashboardPage", () => {
             close: 31.1,
             ema6: 30.5,
             ema13: 29.75,
-            ema42: null,
+            ema42: 28.5,
             marketDate: "2026-01-02",
             source: "brapi",
             symbol: "PETR4",
@@ -393,7 +393,11 @@ describe("DashboardPage", () => {
       screen.getByRole("textbox", { name: "Buscar na tabela" }),
     ).toHaveAttribute("placeholder", "Buscar ativos…");
     expect(screen.getByRole("button", { name: "Colunas" })).toBeInTheDocument();
-    expect(screen.getByText("Aguardando regra")).toBeInTheDocument();
+    expect(screen.getByText("Compra")).toHaveClass(
+      "border-green-200",
+      "bg-green-100",
+      "text-green-800",
+    );
     expect(
       screen.queryByRole("columnheader", { name: "MME6" }),
     ).not.toBeInTheDocument();
@@ -674,7 +678,13 @@ describe("SignalsPage", () => {
     expect(
       screen.getByRole("columnheader", { name: "Data" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("Compra técnica")).toHaveLength(2);
+    const buyBadges = screen.getAllByText("Compra técnica");
+    expect(buyBadges).toHaveLength(2);
+    expect(buyBadges[0]).toHaveClass(
+      "border-green-200",
+      "bg-green-100",
+      "text-green-800",
+    );
     expect(screen.getByText("02/01/2026")).toBeInTheDocument();
     expect(
       screen
@@ -762,7 +772,11 @@ describe("JobsPage", () => {
       { limit: 20 },
       { jobRunRepository: { type: "job-run-repository" } },
     );
-    expect(screen.getByText("Sucesso")).toBeInTheDocument();
+    expect(screen.getByText("Sucesso")).toHaveClass(
+      "border-green-200",
+      "bg-green-100",
+      "text-green-800",
+    );
     expect(screen.getByText("1/1")).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(
@@ -883,7 +897,7 @@ describe("SettingsPage", () => {
     expect(screen.getByText("PETR4")).toBeInTheDocument();
     expect(screen.getByText("Petrobras")).toBeInTheDocument();
     expect(
-      screen.getByRole("img", { name: "Logo indisponível para PETR4" }),
+      screen.getByRole("img", { name: "Logo padrão de PETR4" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Sem observações de PETR4" }),

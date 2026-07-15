@@ -8,7 +8,7 @@ describe("AssetLogo", () => {
     render(<AssetLogo item={{ logoUrl: null, symbol: "PETR4" }} />);
 
     expect(
-      screen.getByRole("img", { name: "Logo indisponível para PETR4" }),
+      screen.getByRole("img", { name: "Logo padrão de PETR4" }),
     ).toBeInTheDocument();
   });
 
@@ -22,7 +22,7 @@ describe("AssetLogo", () => {
     fireEvent.error(screen.getByRole("img", { name: "Logo de VALE3" }));
 
     expect(
-      screen.getByRole("img", { name: "Logo indisponível para VALE3" }),
+      screen.getByRole("img", { name: "Logo padrão de VALE3" }),
     ).toBeInTheDocument();
   });
 });

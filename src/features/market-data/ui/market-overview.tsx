@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { IndicatorSnapshot } from "@/features/indicators/domain/indicator-snapshot";
+import { getTechnicalOutlook } from "@/features/signals/domain/technical-outlook";
 import type { WatchlistItem } from "@/features/watchlist/domain/watchlist-item";
 import { AssetLogo } from "@/features/watchlist/ui/asset-logo";
 import { formatHumanDate } from "@/lib/format-date";
@@ -74,8 +75,13 @@ const marketColumns: ColumnDef<MarketOverviewItem>[] = [
     id: "price",
   },
   {
-    accessorFn: () => "Aguardando regra",
-    cell: () => <Badge variant="secondary">Aguardando regra</Badge>,
+    accessorFn: ({ latestIndicator }) =>
+      getMonitoringSignal(latestIndicator).label,
+    cell: ({ row }) => {
+      const signal = getMonitoringSignal(row.original.latestIndicator);
+
+      return <Badge variant={signal.variant}>{signal.label}</Badge>;
+    },
     header: "Sinal",
     id: "signal",
   },
@@ -140,4 +146,24 @@ function formatCurrency(value: number | null | undefined) {
 
 function formatMarketDate(marketDate: string | null) {
   return marketDate ? formatHumanDate(marketDate) : "Sem dados";
+}
+
+function getMonitoringSignal(snapshot: IndicatorSnapshot | null): {
+  label: string;
+  variant: "buy" | "destructive" | "secondary";
+} {
+  const outlook = getTechnicalOutlook(snapshot);
+
+  if (outlook.signal === "UNAVAILABLE") {
+    return { label: "Dados insuficientes", variant: "secondary" };
+  }
+
+  switch (outlook.suggestion) {
+    case "BUY":
+      return { label: "Compra", variant: "buy" };
+    case "SELL":
+      return { label: "Venda", variant: "destructive" };
+    case "HOLD":
+      return { label: "Manter", variant: "secondary" };
+  }
 }
