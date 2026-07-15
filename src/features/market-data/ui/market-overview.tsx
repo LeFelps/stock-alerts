@@ -105,6 +105,7 @@ const marketColumns: ColumnDef<MarketOverviewItem>[] = [
           <Link
             aria-label={`Ver gráficos de ${row.original.watchlistItem.symbol}`}
             href={`/dashboard/tickers/${row.original.watchlistItem.symbol}`}
+            prefetch
             title={`Ver gráficos de ${row.original.watchlistItem.symbol}`}
           >
             <ChartNoAxesCombined aria-hidden="true" className="size-4" />

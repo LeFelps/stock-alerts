@@ -38,7 +38,11 @@ function DashboardHeader({
 }) {
   return (
     <header className="flex min-h-12 items-center justify-between gap-4">
-      <Link className="flex min-w-0 items-center gap-3" href="/dashboard">
+      <Link
+        className="flex min-w-0 items-center gap-3"
+        href="/dashboard"
+        prefetch
+      >
         <h1 className="text-xl font-extrabold tracking-tight sm:text-3xl">
           Stock Alerts
         </h1>
