@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 import {
   Card,
   CardContent,
@@ -188,6 +192,7 @@ function ChartCard({
 }
 
 function EmaChart({ snapshots }: { snapshots: IndicatorSnapshot[] }) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const values = snapshots.flatMap((snapshot) =>
     [snapshot.close, snapshot.ema6, snapshot.ema13, snapshot.ema42].filter(
       (value): value is number => value != null,
@@ -221,38 +226,76 @@ function EmaChart({ snapshots }: { snapshots: IndicatorSnapshot[] }) {
         ))}
       </div>
       <div className="w-full overflow-x-auto">
-        <svg
-          aria-label="Gráfico de linhas das médias móveis exponenciais"
-          className="h-auto min-w-[40rem] w-full"
-          role="img"
-          viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        >
-          <ChartGrid scale={scale} snapshots={snapshots} />
-          {series.map((item) => {
-            const path = createLinePath(
-              snapshots.map((snapshot) => snapshot[item.key]),
-              scale,
-            );
+        <div className="relative min-w-[40rem]">
+          <svg
+            aria-label="Gráfico de linhas das médias móveis exponenciais"
+            className="h-auto w-full"
+            onPointerLeave={() => setActiveIndex(null)}
+            role="img"
+            viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+          >
+            <ChartGrid scale={scale} snapshots={snapshots} />
+            {series.map((item) => {
+              const path = createLinePath(
+                snapshots.map((snapshot) => snapshot[item.key]),
+                scale,
+              );
 
-            return path ? (
-              <path
-                d={path}
-                fill="none"
-                key={item.key}
-                stroke={item.color}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
+              return path ? (
+                <path
+                  d={path}
+                  fill="none"
+                  key={item.key}
+                  stroke={item.color}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                />
+              ) : null;
+            })}
+            {activeIndex == null ? null : (
+              <line
+                stroke="var(--muted-foreground)"
+                strokeDasharray="4 4"
+                x1={scale.x(activeIndex)}
+                x2={scale.x(activeIndex)}
+                y1={CHART_PADDING.top}
+                y2={CHART_HEIGHT - CHART_PADDING.bottom}
               />
-            ) : null;
-          })}
-        </svg>
+            )}
+            <ChartHitAreas
+              accessibleLabel={(snapshot) =>
+                `Exibir detalhes de ${formatMarketDate(snapshot.marketDate)} no gráfico de médias`
+              }
+              onActiveIndexChange={setActiveIndex}
+              scale={scale}
+              snapshots={snapshots}
+            />
+          </svg>
+          {activeIndex == null ? null : (
+            <ChartHoverCard
+              alignRight={activeIndex >= snapshots.length / 2}
+              left={scale.x(activeIndex)}
+              title={formatMarketDate(snapshots[activeIndex].marketDate)}
+            >
+              {series.map((item) => (
+                <ChartHoverValue
+                  color={item.color}
+                  key={item.key}
+                  label={item.label}
+                  value={formatCurrency(snapshots[activeIndex][item.key])}
+                />
+              ))}
+            </ChartHoverCard>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 function CandlestickChart({ snapshots }: { snapshots: PriceSnapshot[] }) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const candles = snapshots.filter(
     (
       snapshot,
@@ -285,50 +328,178 @@ function CandlestickChart({ snapshots }: { snapshots: PriceSnapshot[] }) {
         </span>
       </div>
       <div className="w-full overflow-x-auto">
-        <svg
-          aria-label="Gráfico de candles da oscilação de preços"
-          className="h-auto min-w-[40rem] w-full"
-          role="img"
-          viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        >
-          <ChartGrid scale={scale} snapshots={candles} />
-          {candles.map((snapshot, index) => {
-            const x = scale.x(index);
-            const openY = scale.y(snapshot.open);
-            const closeY = scale.y(snapshot.close);
-            const rising = snapshot.close >= snapshot.open;
-            const color = rising ? "#059669" : "#dc2626";
-            const bodyY = Math.min(openY, closeY);
-            const bodyHeight = Math.max(2, Math.abs(closeY - openY));
+        <div className="relative min-w-[40rem]">
+          <svg
+            aria-label="Gráfico de candles da oscilação de preços"
+            className="h-auto w-full"
+            onPointerLeave={() => setActiveIndex(null)}
+            role="img"
+            viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+          >
+            <ChartGrid scale={scale} snapshots={candles} />
+            {candles.map((snapshot, index) => {
+              const x = scale.x(index);
+              const openY = scale.y(snapshot.open);
+              const closeY = scale.y(snapshot.close);
+              const rising = snapshot.close >= snapshot.open;
+              const color = rising ? "#059669" : "#dc2626";
+              const bodyY = Math.min(openY, closeY);
+              const bodyHeight = Math.max(2, Math.abs(closeY - openY));
 
-            return (
-              <g key={`${snapshot.source}-${snapshot.marketDate}`}>
-                <title>{`${formatMarketDate(snapshot.marketDate)}: abertura ${formatCurrency(snapshot.open)}, máxima ${formatCurrency(snapshot.high)}, mínima ${formatCurrency(snapshot.low)}, fechamento ${formatCurrency(snapshot.close)}`}</title>
-                <line
-                  stroke={color}
-                  strokeWidth="1.5"
-                  x1={x}
-                  x2={x}
-                  y1={scale.y(snapshot.high)}
-                  y2={scale.y(snapshot.low)}
-                />
-                <rect
-                  fill={color}
-                  height={bodyHeight}
-                  width={candleWidth}
-                  x={x - candleWidth / 2}
-                  y={bodyY}
-                />
-              </g>
-            );
-          })}
-        </svg>
+              return (
+                <g key={`${snapshot.source}-${snapshot.marketDate}`}>
+                  <line
+                    stroke={color}
+                    strokeWidth="1.5"
+                    x1={x}
+                    x2={x}
+                    y1={scale.y(snapshot.high)}
+                    y2={scale.y(snapshot.low)}
+                  />
+                  <rect
+                    fill={color}
+                    height={bodyHeight}
+                    width={candleWidth}
+                    x={x - candleWidth / 2}
+                    y={bodyY}
+                  />
+                </g>
+              );
+            })}
+            {activeIndex == null ? null : (
+              <line
+                stroke="var(--muted-foreground)"
+                strokeDasharray="4 4"
+                x1={scale.x(activeIndex)}
+                x2={scale.x(activeIndex)}
+                y1={CHART_PADDING.top}
+                y2={CHART_HEIGHT - CHART_PADDING.bottom}
+              />
+            )}
+            <ChartHitAreas
+              accessibleLabel={(snapshot) =>
+                `Exibir detalhes de ${formatMarketDate(snapshot.marketDate)} no gráfico de preços`
+              }
+              onActiveIndexChange={setActiveIndex}
+              scale={scale}
+              snapshots={candles}
+            />
+          </svg>
+          {activeIndex == null ? null : (
+            <ChartHoverCard
+              alignRight={activeIndex >= candles.length / 2}
+              left={scale.x(activeIndex)}
+              title={formatMarketDate(candles[activeIndex].marketDate)}
+            >
+              <ChartHoverValue
+                label="Abertura"
+                value={formatCurrency(candles[activeIndex].open)}
+              />
+              <ChartHoverValue
+                label="Fechamento"
+                value={formatCurrency(candles[activeIndex].close)}
+              />
+            </ChartHoverCard>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 type ChartScale = ReturnType<typeof createChartScale>;
+
+function ChartHitAreas<TSnapshot extends { marketDate: string }>({
+  accessibleLabel,
+  onActiveIndexChange,
+  scale,
+  snapshots,
+}: {
+  accessibleLabel: (snapshot: TSnapshot) => string;
+  onActiveIndexChange: (index: number | null) => void;
+  scale: ChartScale;
+  snapshots: TSnapshot[];
+}) {
+  return snapshots.map((snapshot, index) => {
+    const previousX = index === 0 ? CHART_PADDING.left : scale.x(index - 1);
+    const nextX =
+      index === snapshots.length - 1
+        ? CHART_WIDTH - CHART_PADDING.right
+        : scale.x(index + 1);
+    const x = index === 0 ? previousX : (previousX + scale.x(index)) / 2;
+    const endX =
+      index === snapshots.length - 1 ? nextX : (scale.x(index) + nextX) / 2;
+
+    return (
+      <rect
+        aria-label={accessibleLabel(snapshot)}
+        className="outline-none focus-visible:stroke-ring"
+        fill="transparent"
+        height={CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom}
+        key={`${snapshot.marketDate}-${index}`}
+        onBlur={() => onActiveIndexChange(null)}
+        onFocus={() => onActiveIndexChange(index)}
+        onPointerEnter={() => onActiveIndexChange(index)}
+        stroke="transparent"
+        strokeWidth="2"
+        tabIndex={0}
+        width={Math.max(1, endX - x)}
+        x={x}
+        y={CHART_PADDING.top}
+      />
+    );
+  });
+}
+
+function ChartHoverCard({
+  alignRight,
+  children,
+  left,
+  title,
+}: {
+  alignRight: boolean;
+  children: React.ReactNode;
+  left: number;
+  title: string;
+}) {
+  return (
+    <div
+      aria-label={`Detalhes do gráfico em ${title}`}
+      className={`pointer-events-none absolute top-2 z-10 min-w-48 rounded-md border bg-card p-3 text-card-foreground shadow-lg ${alignRight ? "-translate-x-full" : ""}`}
+      role="tooltip"
+      style={{ left: `${(left / CHART_WIDTH) * 100}%` }}
+    >
+      <p className="border-b pb-2 text-xs font-medium">{title}</p>
+      <div className="grid gap-1.5 pt-2">{children}</div>
+    </div>
+  );
+}
+
+function ChartHoverValue({
+  color,
+  label,
+  value,
+}: {
+  color?: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <p className="flex items-center justify-between gap-4 text-xs">
+      <span className="flex items-center gap-2 text-muted-foreground">
+        {color ? (
+          <span
+            aria-hidden="true"
+            className="size-2 rounded-full"
+            style={{ backgroundColor: color }}
+          />
+        ) : null}
+        {label}
+      </span>
+      <span className="font-medium tabular-nums">{value}</span>
+    </p>
+  );
+}
 
 function ChartGrid({
   scale,

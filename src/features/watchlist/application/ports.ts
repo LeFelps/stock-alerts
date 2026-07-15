@@ -17,6 +17,15 @@ export type AssetCatalogProvider = {
   resolveSymbol(symbol: string): Promise<AssetResolution>;
 };
 
+export type AssetLogoRefreshRepository = {
+  listMissingLogoSymbols(): Promise<string[]>;
+  updateMissingLogo(command: {
+    logoUrl: string;
+    longName: string;
+    symbol: string;
+  }): Promise<number>;
+};
+
 export type CreateWatchlistItemFields = Pick<
   WatchlistItem,
   "notes" | "symbol"

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Copy, LoaderCircle, RotateCcw } from "lucide-react";
+import { CircleHelp, Copy, LoaderCircle, RotateCcw } from "lucide-react";
 import { startTransition, useState } from "react";
 import { toast } from "sonner";
 
@@ -9,6 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { formatHumanDateTime } from "@/lib/format-date";
 
 import type { JobRun } from "../domain/job-run";
@@ -50,34 +55,42 @@ const jobRunColumns: ColumnDef<JobRun>[] = [
   {
     accessorFn: formatStatus,
     cell: ({ row }) => (
-      <Badge
-        variant={row.original.status === "FAILED" ? "destructive" : "secondary"}
-      >
-        {formatStatus(row.original)}
-      </Badge>
+      <CenteredCell>
+        <Badge
+          variant={
+            row.original.status === "FAILED" ? "destructive" : "secondary"
+          }
+        >
+          {formatStatus(row.original)}
+        </Badge>
+      </CenteredCell>
     ),
-    header: "Status",
+    header: () => <CenteredHeader>Status</CenteredHeader>,
     id: "status",
   },
   {
     accessorFn: (jobRun) => formatDuration(jobRun.durationMs),
-    header: "Duração",
+    cell: ({ getValue }) => <CenteredCell>{String(getValue())}</CenteredCell>,
+    header: () => <CenteredHeader>Duração</CenteredHeader>,
     id: "duration",
   },
   {
     accessorFn: (jobRun) =>
       `${jobRun.summary.refreshedSymbols}/${jobRun.summary.uniqueSymbols}`,
-    header: "Ativos",
+    cell: ({ getValue }) => <CenteredCell>{String(getValue())}</CenteredCell>,
+    header: () => <CenteredHeader>Ativos</CenteredHeader>,
     id: "symbols",
   },
   {
     accessorFn: (jobRun) => jobRun.summary.staleTargets,
-    header: "Ignorados",
+    cell: ({ getValue }) => <CenteredCell>{String(getValue())}</CenteredCell>,
+    header: () => <IgnoredHeader />,
     id: "staleTargets",
   },
   {
     accessorFn: (jobRun) => jobRun.summary.createdSignals,
-    header: "Sinais",
+    cell: ({ getValue }) => <CenteredCell>{String(getValue())}</CenteredCell>,
+    header: () => <CenteredHeader>Sinais</CenteredHeader>,
     id: "signals",
   },
   {
@@ -167,12 +180,26 @@ function JobRunError({ error }: { error: string | null }) {
 
   return (
     <div className="flex max-w-xs items-center gap-1">
-      <span
-        className="min-w-0 flex-1 truncate text-muted-foreground"
-        title={label}
-      >
-        {label}
-      </span>
+      {error ? (
+        <HoverCard openDelay={100}>
+          <HoverCardTrigger asChild>
+            <span
+              aria-label="Ver erro completo"
+              className="min-w-0 flex-1 cursor-help truncate text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              tabIndex={0}
+            >
+              {label}
+            </span>
+          </HoverCardTrigger>
+          <HoverCardContent align="end" className="w-96 max-w-[90vw]">
+            <p className="break-words text-sm whitespace-pre-wrap">{error}</p>
+          </HoverCardContent>
+        </HoverCard>
+      ) : (
+        <span className="min-w-0 flex-1 truncate text-muted-foreground">
+          {label}
+        </span>
+      )}
       {error ? (
         <Button
           aria-label="Copiar erro da execução"
@@ -187,6 +214,39 @@ function JobRunError({ error }: { error: string | null }) {
         </Button>
       ) : null}
     </div>
+  );
+}
+
+function CenteredCell({ children }: { children: React.ReactNode }) {
+  return <div className="flex justify-center text-center">{children}</div>;
+}
+
+function CenteredHeader({ children }: { children: React.ReactNode }) {
+  return <div className="text-center">{children}</div>;
+}
+
+function IgnoredHeader() {
+  return (
+    <CenteredHeader>
+      <span className="inline-flex items-center justify-center gap-1">
+        Ignorados
+        <HoverCard openDelay={100}>
+          <HoverCardTrigger asChild>
+            <button
+              aria-label="O que significa Ignorados?"
+              className="rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              type="button"
+            >
+              <CircleHelp aria-hidden="true" className="size-3.5" />
+            </button>
+          </HoverCardTrigger>
+          <HoverCardContent className="text-left text-sm font-normal whitespace-normal">
+            Perfis e Ativos cujo pregão mais recente já havia sido processado.
+            Nenhuma nova análise ou envio de email foi necessário.
+          </HoverCardContent>
+        </HoverCard>
+      </span>
+    </CenteredHeader>
   );
 }
 

@@ -83,7 +83,11 @@ export function createBrapiAssetCatalogProvider({
         }
 
         const longName = result.data.longName?.trim() || parsedSymbol.data;
-        const logoUrl = result.data.logoUrl ?? result.data.logourl ?? null;
+        const resolvedLogoUrl =
+          result.data.logoUrl ?? result.data.logourl ?? null;
+        const logoUrl = isGenericBrapiLogo(resolvedLogoUrl)
+          ? null
+          : resolvedLogoUrl;
 
         return {
           asset: { logoUrl, longName, symbol: parsedSymbol.data },
@@ -94,4 +98,14 @@ export function createBrapiAssetCatalogProvider({
       }
     },
   };
+}
+
+function isGenericBrapiLogo(logoUrl: string | null) {
+  if (!logoUrl) return false;
+
+  try {
+    return new URL(logoUrl).pathname.toUpperCase().endsWith("/BRAPI.SVG");
+  } catch {
+    return false;
+  }
 }

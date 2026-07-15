@@ -108,6 +108,30 @@ describe("brapi asset catalog provider", () => {
     });
   });
 
+  it("treats brapi's generic fallback as a missing asset logo", async () => {
+    const provider = createProvider({
+      results: [
+        {
+          data: {
+            logourl: "https://icons.brapi.dev/icons/BRAPI.svg",
+            longName: "Kinea Rendimentos Imobiliários",
+          },
+          requestedSymbol: "KNCR11",
+          symbol: "KNCR11",
+        },
+      ],
+    });
+
+    await expect(provider.resolveSymbol("KNCR11")).resolves.toEqual({
+      asset: {
+        logoUrl: null,
+        longName: "Kinea Rendimentos Imobiliários",
+        symbol: "KNCR11",
+      },
+      status: "resolved",
+    });
+  });
+
   it("returns invalid for a missing or unsupported symbol", async () => {
     const missingProvider = createBrapiAssetCatalogProvider({
       fetchFn: vi.fn().mockResolvedValue(new Response(null, { status: 404 })),

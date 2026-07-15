@@ -1,4 +1,5 @@
 import { runCheckAlertsJob } from "@/features/jobs/server/check-alerts-job";
+import { isAuthorizedCronRequest } from "@/features/jobs/server/is-authorized-cron-request";
 
 export const dynamic = "force-dynamic";
 
@@ -18,14 +19,4 @@ export async function GET(request: Request) {
     },
     { status: result.ok ? 200 : 500 },
   );
-}
-
-function isAuthorizedCronRequest(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret) {
-    return false;
-  }
-
-  return request.headers.get("authorization") === `Bearer ${cronSecret}`;
 }
