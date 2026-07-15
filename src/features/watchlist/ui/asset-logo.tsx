@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageOff } from "lucide-react";
+import { Building2 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -51,11 +51,11 @@ function AssetLogoImage({
 function AssetLogoFallback({ symbol }: { symbol: string }) {
   return (
     <span
-      aria-label={`Logo indisponível para ${symbol}`}
-      className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
+      aria-label={`Logo padrão de ${symbol}`}
+      className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
       role="img"
     >
-      <ImageOff aria-hidden="true" className="size-4" />
+      <Building2 aria-hidden="true" className="size-4" />
     </span>
   );
 }

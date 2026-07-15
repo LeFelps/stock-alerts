@@ -55,7 +55,11 @@ const signalColumns: ColumnDef<SignalHistoryItem>[] = [
   {
     accessorFn: ({ signal }) => formatSignalType(signal),
     cell: ({ row }) => (
-      <Badge variant="secondary">{formatSignalType(row.original.signal)}</Badge>
+      <Badge
+        variant={row.original.signal.signalType === "BUY" ? "buy" : "secondary"}
+      >
+        {formatSignalType(row.original.signal)}
+      </Badge>
     ),
     header: "Tipo",
     id: "type",
