@@ -24,6 +24,7 @@ The application stores daily market data, calculates exponential moving averages
   - [Required dependencies](#required-dependencies)
   - [Setup](#setup)
   - [Scheduled routes](#scheduled-routes)
+- [Architecture](#architecture)
 - [Project structure](#project-structure)
 - [Scripts](#scripts)
 
@@ -296,6 +297,29 @@ Environment-variable changes apply only to new Vercel deployments, so redeploy a
 | `0 11 * * 2-6` | `/api/cron/check-alerts`        | Update prices, indicators, signals, and emails |
 
 Vercel evaluates both schedules in UTC. The alert check runs Tuesday through Saturday at 11:00 UTC, currently 08:00 in São Paulo. Vercel sends `Authorization: Bearer <CRON_SECRET>` automatically.
+
+## Architecture
+
+The App Router composes the feature modules, while scheduled routes reuse the same application services used by the protected maintainer actions.
+
+```mermaid
+flowchart LR
+  Browser[Authenticated browser] --> Auth[Google OAuth / Auth.js]
+  Auth --> UI[Next.js App Router]
+  UI --> Profiles[(Profiles and watchlists)]
+
+  Cron[Vercel Cron] --> Routes[Protected cron routes]
+  Routes --> Job[Alert-check job]
+  Job --> Brapi[brapi.dev]
+  Brapi --> Prices[(Price snapshots)]
+  Prices --> Indicators[EMA 6 / 13 / 42]
+  Indicators --> Signals[(Profile signals)]
+  Signals --> Digest[Daily signal digest]
+  Digest --> Resend[Resend]
+
+  Super[SUPER profile] --> Runs[Job history and retry]
+  Runs --> Job
+```
 
 ## Project structure
 
