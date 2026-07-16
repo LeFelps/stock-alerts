@@ -1,158 +1,311 @@
 # Stock Alerts
 
-Stock Alerts is a Next.js App Router application for tracking watchlists and
-alert rules around stock price movements.
+Stock Alerts is a study project for monitoring a personal list of assets traded on the Brazilian market. It was built to explore the Next.js App Router, feature-oriented application architecture, scheduled background work, external data providers, and email delivery.
 
-## Local Setup
+The application stores daily market data, calculates exponential moving averages, records technical buy signals, and displays the results in an authenticated dashboard. It is not intended to provide investment advice.
 
-Install dependencies:
+## Screenshots
+
+### Monitoring
+
+The main screen shows the latest stored price, current EMA-based suggestion, market-data date, and monitoring status for each asset.
+
+![Monitoring screen](./docs/assets/readme/dashboard.png)
+
+### Asset details
+
+Each monitored asset has a detail page with its latest price, EMA 6/13/42 values, a 60-session EMA chart, and an OHLC candlestick chart.
+
+![PETR4 detail screen](./docs/assets/readme/ticker-detail.png)
+
+The account email was replaced with `email@example.com` while capturing these screenshots. The remaining data comes from the running production application.
+
+## Features
+
+- Google authentication with an optional exact-email allowlist.
+- Profile-owned watchlists with symbol validation through [brapi.dev](https://brapi.dev/docs).
+- Asset names, logos, notes, and per-asset pause/resume controls.
+- Daily OHLC price snapshots and EMA 6, 13, and 42 calculations.
+- Current technical classification: buy, hold, sell, or insufficient data.
+- Buy-signal history based on EMA crossovers.
+- Per-profile email preference and Resend signal digests.
+- Protected Vercel Cron routes for market checks and missing-logo refreshes.
+- Persisted job history, checkpoints, and email delivery attempts.
+- Unit, component, server-action, and Playwright browser tests.
+
+## The `SUPER` role
+
+The project includes a small hidden maintainer flow:
+
+1. Sign in normally.
+2. Click the email address in the dashboard header five times within two seconds.
+3. Enter the value configured in `ROLE_ACCESS_PASSWORD`.
+
+The profile is promoted to `SUPER` and the **Execuções** section becomes available. Server-side authorization also protects the route and retry action.
+
+The execution screen shows recent job results, duration, processed assets, generated signals, email outcomes, and provider errors. A `SUPER` profile can retry the latest failed alert-check run.
+
+![SUPER execution history](./docs/assets/readme/jobs.png)
+
+`ROLE_ACCESS_PASSWORD` is a shared promotion secret. Use a long, unique value and restrict `ALLOWED_EMAILS` in production. The promoted role is stored on the application profile.
+
+## How the monitoring job works
+
+The scheduled alert check:
+
+1. Finds enabled profile/asset pairs.
+2. Fetches each distinct symbol from brapi.dev once per run.
+3. Stores new price history and recalculates EMA snapshots.
+4. Detects buy-signal crossovers for each profile.
+5. Sends at most one eligible signal digest per profile and market date.
+6. Records checkpoints, delivery results, and the overall job summary.
+
+The current dashboard suggestion is based on EMA alignment:
+
+| Alignment                        | Suggestion        |
+| -------------------------------- | ----------------- |
+| `EMA 6 > EMA 13 > EMA 42`        | Buy               |
+| `EMA 6 < EMA 13 < EMA 42`        | Sell              |
+| Any other complete alignment     | Hold              |
+| One or more averages unavailable | Insufficient data |
+
+Recorded buy signals use two crossover rules:
+
+- EMA 6 crosses above EMA 42.
+- EMA 6 crosses above EMA 13 while EMA 6 is above EMA 42.
+
+## Hosting
+
+The repository is configured for Vercel and PostgreSQL. Another Node.js host can run the application, but it must provide equivalent scheduled HTTPS requests for the two cron routes.
+
+### Required dependencies
+
+#### Local software
+
+| Dependency                     | Requirement                               |
+| ------------------------------ | ----------------------------------------- |
+| [Git](https://git-scm.com/)    | Current stable version                    |
+| [Node.js](https://nodejs.org/) | `20.9` or newer                           |
+| [pnpm](https://pnpm.io/)       | `11.8.0`                                  |
+| PostgreSQL client tools        | Recommended for local database management |
+
+Enable the package-manager version declared by the repository:
 
 ```bash
-pnpm install
+corepack enable
+corepack prepare pnpm@11.8.0 --activate
 ```
 
-Start the app:
+If Corepack is unavailable in the installed Node.js distribution, install it first with `npm install --global corepack`.
+
+#### External services
+
+| Service                                                           | Use                                                 |
+| ----------------------------------------------------------------- | --------------------------------------------------- |
+| PostgreSQL                                                        | Application data, Auth.js sessions, and job history |
+| [Google Cloud](https://console.cloud.google.com/apis/credentials) | OAuth 2.0 web client                                |
+| [brapi.dev](https://brapi.dev/dashboard)                          | B3 asset metadata and historical prices             |
+| [Resend](https://resend.com/)                                     | Signal digest delivery                              |
+| [Vercel](https://vercel.com/)                                     | Hosting and scheduled route invocation              |
+
+The current email-provider validation requires a sender on the exact `fellcor.com` domain. A fork using another domain must update `src/features/alerts/infrastructure/email-delivery-provider-factory.ts`.
+
+### Setup
+
+#### 1. Clone and install
 
 ```bash
-pnpm dev
+git clone https://github.com/LeFelps/stock-alerts.git
+cd stock-alerts
+pnpm install --frozen-lockfile
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The root route shows the
-Google sign-in entry. Signed-in users continue to the protected dashboard at
-`/dashboard`.
+#### 2. Create a PostgreSQL database
 
-## Scripts
+For a locally running PostgreSQL server:
 
 ```bash
-pnpm lint
-pnpm test
-pnpm test:e2e
-pnpm build
-pnpm format
-pnpm db:generate
-pnpm db:migrate
-pnpm db:push
+createdb stock_alerts
 ```
 
-## Environment Variables
+For Vercel, provision a managed PostgreSQL database through the [Storage Marketplace](https://vercel.com/docs/marketplace-storage) or another provider. Use a pooled connection string for serverless deployments when the provider offers one.
 
-Auth and database-backed sessions require:
+Use separate databases for production and preview deployments. The `prebuild` script runs `pnpm db:migrate`, so each build migrates the database configured for that environment.
 
-```bash
-AUTH_SECRET=
-AUTH_GOOGLE_ID=
-AUTH_GOOGLE_SECRET=
-DATABASE_URL=
-```
+#### 3. Create Google OAuth credentials
 
-Optional sign-in restriction:
+In the [Google Auth Platform](https://console.cloud.google.com/auth/overview):
 
-```bash
-ALLOWED_EMAILS=
-```
-
-`ALLOWED_EMAILS` accepts comma or newline-separated exact email addresses. If it
-is unset or blank, any Google account with an email address can sign in.
-
-Configure this Google OAuth callback URL for local development:
+1. Create or select a project.
+2. Configure the OAuth consent screen.
+3. Create an OAuth 2.0 client with type **Web application**.
+4. Add the exact callback URLs that will be used:
 
 ```text
 http://localhost:3000/api/auth/callback/google
+https://<your-production-domain>/api/auth/callback/google
 ```
 
-Market data is updated exclusively by the scheduled alert-check job; signed-in
-users cannot trigger provider requests. The job fetches each distinct enabled
-ticker once per run. The MVP currently supports brapi.dev. A brapi token is
-required for tickers outside brapi's unrestricted test set:
+Save the client ID and secret as `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`.
+
+#### 4. Configure brapi.dev and Resend
+
+Create a token in the [brapi dashboard](https://brapi.dev/dashboard). Some test symbols work without authentication, but normal production coverage requires `BRAPI_API_TOKEN`.
+
+For email delivery:
+
+1. Add `fellcor.com` to the [Resend Domains dashboard](https://resend.com/domains).
+2. Publish the supplied SPF and DKIM records.
+3. Wait for the domain status to become **Verified**.
+4. Create a project-specific API key with **Sending access**.
+
+#### 5. Configure environment variables
 
 ```bash
+cp .env.example .env.local
+```
+
+Generate separate secrets for Auth.js, cron requests, and role promotion:
+
+```bash
+openssl rand -base64 32
+```
+
+Complete `.env.local`:
+
+```dotenv
+AUTH_SECRET=<random-auth-secret>
+AUTH_GOOGLE_ID=<google-client-id>
+AUTH_GOOGLE_SECRET=<google-client-secret>
+
+DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/stock_alerts
+
+# Optional. Blank allows any Google account with an email address.
+ALLOWED_EMAILS=you@example.com
+
+ROLE_ACCESS_PASSWORD=<random-role-password>
+
 MARKET_DATA_PROVIDER=brapi
-BRAPI_API_TOKEN=
-```
+BRAPI_API_TOKEN=<brapi-token>
 
-BUY signal digest delivery uses Resend. A run sends at most one digest per
-eligible Perfil, containing only signals for the expected market date. Delivery
-attempts remain recorded per signal and recipient email, including skipped
-sends when a Perfil has email alerts disabled.
-
-```bash
 EMAIL_PROVIDER=resend
-RESEND_API_KEY=
+RESEND_API_KEY=<resend-key-starting-with-re_>
 ALERT_EMAIL_FROM="Stock Alerts <noreply.stock-alerts@fellcor.com>"
+
+CRON_SECRET=<random-cron-secret>
 ```
 
-Before deployment, verify the root `fellcor.com` domain in the shared Resend
-account and wait for it to reach the verified state. Create a new API key for
-Stock Alerts with sending-only permission; do not reuse the Unseal project key.
-Store that key as `RESEND_API_KEY` in the deployment environment.
-The application rejects missing keys and values that do not use Resend's `re_`
-prefix.
+| Variable               | Requirement                                           |
+| ---------------------- | ----------------------------------------------------- |
+| `AUTH_SECRET`          | Required by Auth.js                                   |
+| `AUTH_GOOGLE_ID`       | Required Google OAuth client ID                       |
+| `AUTH_GOOGLE_SECRET`   | Required Google OAuth client secret                   |
+| `DATABASE_URL`         | Required PostgreSQL connection string                 |
+| `ALLOWED_EMAILS`       | Optional comma/newline-separated allowlist            |
+| `ROLE_ACCESS_PASSWORD` | Required to unlock the `SUPER` role                   |
+| `MARKET_DATA_PROVIDER` | Optional; defaults to `brapi`                         |
+| `BRAPI_API_TOKEN`      | Required for normal production coverage               |
+| `EMAIL_PROVIDER`       | Optional; defaults to `resend`                        |
+| `RESEND_API_KEY`       | Required for email delivery and must start with `re_` |
+| `ALERT_EMAIL_FROM`     | Required and currently restricted to `fellcor.com`    |
+| `CRON_SECRET`          | Required by both scheduled routes                     |
 
-`ALERT_EMAIL_FROM` accepts either a bare address or Resend's friendly-name
-format, such as `Stock Alerts <noreply.stock-alerts@fellcor.com>`. The mailbox
-domain must be exactly `fellcor.com`; subdomains such as
-`alerts@mail.fellcor.com` are rejected by runtime validation. Quote a
-friendly-name value in environment files because it contains spaces.
-`EMAIL_PROVIDER` may be omitted because it defaults to `resend`.
+Environment files are ignored by Git except for `.env.example`. None of these variables should use a `NEXT_PUBLIC_` prefix.
 
-Stock Alerts shares the Resend account's sending quotas and domain reputation
-with the account's other projects. Monitor usage, bounces, complaints, and
-reputation across the account before increasing alert volume; a project-specific
-API key isolates credentials but does not isolate those shared limits.
-
-The scheduled alert check route is available at
-`/api/cron/check-alerts`. `CRON_SECRET` is required in every environment that
-invokes the route. Vercel includes it as
-`Authorization: Bearer <CRON_SECRET>` when invoking the route. Requests are
-rejected when the secret is missing or does not match.
+#### 6. Migrate and run locally
 
 ```bash
-CRON_SECRET=
+pnpm db:migrate
+pnpm dev
 ```
 
-Production configures Vercel Cron with `0 11 * * 2-6`. Vercel evaluates cron
-expressions in UTC, so the job runs Tuesday through Saturday at 11:00 UTC,
-corresponding to 08:00 in `America/Sao_Paulo` while São Paulo remains UTC−03:00.
-Tuesday evaluates Monday's market data and Saturday evaluates Friday's. Only a
-signal whose market date exactly matches the previous São Paulo calendar day is
-eligible for email; delayed or historical signals are stored without being
-emailed. Vercel does not invoke cron jobs for preview deployments.
+Open [http://localhost:3000](http://localhost:3000) and sign in with Google.
 
-Keep local values in `.env.local`; `.env*` files are ignored by git. Run
-`pnpm db:migrate` against a reachable Postgres `DATABASE_URL` before using auth
-locally.
+The alert-check route can be invoked manually with the cron secret:
 
-## Automated Checks
+```bash
+curl --fail-with-body \
+  --header "Authorization: Bearer $CRON_SECRET" \
+  http://localhost:3000/api/cron/check-alerts
+```
 
-Opening or updating a pull request runs the unit and browser test suites in
-GitHub Actions. The workflow provisions PostgreSQL and applies the checked-in
-migrations before running the browser tests. Configure the `Automated tests`
-check as required in the repository's branch rules so failed runs block merges.
+This performs real provider requests and database writes.
 
-Installing dependencies enables the Husky-managed Git hooks. The pre-push hook
-runs `pnpm test`, and `pnpm build` automatically runs `pnpm db:migrate` first.
-Set `DATABASE_URL` to the database that should be migrated before building.
+#### 7. Run the checks
 
-## Project Conventions
+```bash
+pnpm lint
+pnpm format
+pnpm test
+pnpm build
+```
 
-- Application code lives under `src/`.
-- App Router routes live in `src/app`.
-- Product behavior lives in feature modules under `src/features`; see
-  `docs/architecture.md`.
-- Drizzle schema lives in `src/db/schema.ts`, with generated SQL migrations in
-  `drizzle/`.
-- Shared UI primitives live in `src/components/ui`.
-- Shared utilities live in `src/lib`.
-- Import app code through the `@/*` alias, which resolves to `src/*`.
-- Tailwind CSS v4 is loaded from `src/app/globals.css`.
-- shadcn/ui is initialized through `components.json` with CSS variables and the
-  `new-york` style.
-- Formatting uses Prettier with the checked-in `.prettierrc`.
+`pnpm build` applies migrations first and requires a reachable `DATABASE_URL`.
 
-## Planned MVP Scope
+For the browser suite:
 
-- Authenticated dashboard routes.
-- Watchlist management for tracked assets.
-- Alert rules for threshold-based price movements.
-- Market data provider integration.
-- Notification delivery hooks for triggered alerts.
+```bash
+pnpm exec playwright install
+pnpm test:e2e
+```
+
+#### 8. Deploy to Vercel
+
+1. Import the Git repository into a new Vercel project.
+2. Connect the production PostgreSQL database and expose its connection string as `DATABASE_URL`.
+3. Add the environment variables above to the Production environment.
+4. If previews are enabled, add their variables separately and use an isolated preview database.
+5. Deploy the project.
+6. Add the final production callback URL to the Google OAuth client.
+7. Confirm both jobs under **Project → Settings → Cron Jobs**.
+8. Sign in, add an asset, and invoke the alert-check route once to populate initial history.
+9. Unlock `SUPER` and inspect the resulting execution.
+
+Environment-variable changes apply only to new Vercel deployments, so redeploy after editing them.
+
+### Scheduled routes
+
+[`vercel.json`](./vercel.json) registers:
+
+| Schedule       | Route                           | Purpose                                        |
+| -------------- | ------------------------------- | ---------------------------------------------- |
+| `30 10 * * *`  | `/api/cron/refresh-asset-logos` | Refresh missing or generic logos               |
+| `0 11 * * 2-6` | `/api/cron/check-alerts`        | Update prices, indicators, signals, and emails |
+
+Vercel evaluates both schedules in UTC. The alert check runs Tuesday through Saturday at 11:00 UTC, currently 08:00 in São Paulo. Vercel sends `Authorization: Bearer <CRON_SECRET>` automatically.
+
+## Project structure
+
+```text
+src/
+├── app/                    # App Router pages, layouts, actions, and routes
+├── components/ui/          # Shared UI primitives
+├── db/                     # Drizzle client and PostgreSQL schema
+├── features/
+│   ├── alerts/             # Email digest delivery
+│   ├── indicators/         # EMA calculations and persistence
+│   ├── jobs/               # Scheduled orchestration and execution history
+│   ├── market-data/        # brapi adapter and market UI
+│   ├── profiles/           # Product profiles and preferences
+│   ├── role-access/        # SUPER promotion flow
+│   ├── signals/            # Signal detection and history
+│   └── watchlist/          # Watchlist and asset catalog behavior
+└── lib/                    # Shared helpers and authentication policies
+```
+
+See [`docs/architecture.md`](./docs/architecture.md) and [`docs/adr/`](./docs/adr) for the architectural rules and accepted decisions.
+
+## Scripts
+
+| Command            | Description                      |
+| ------------------ | -------------------------------- |
+| `pnpm dev`         | Start the development server     |
+| `pnpm build`       | Migrate and build for production |
+| `pnpm start`       | Start the production build       |
+| `pnpm lint`        | Run ESLint                       |
+| `pnpm format`      | Check formatting                 |
+| `pnpm test`        | Run Vitest once                  |
+| `pnpm test:e2e`    | Run Playwright tests             |
+| `pnpm db:generate` | Generate a Drizzle migration     |
+| `pnpm db:migrate`  | Apply checked-in migrations      |
+| `pnpm db:push`     | Push the schema directly         |
