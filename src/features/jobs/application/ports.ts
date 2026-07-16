@@ -10,6 +10,8 @@ import type {
 
 export type AlertCheckTarget = {
   emailAlertsEnabled: boolean;
+  logoUrl: string | null;
+  longName: string | null;
   profileId: ProfileId;
   recipientEmail: string;
   symbol: string;

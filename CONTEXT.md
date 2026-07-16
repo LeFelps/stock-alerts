@@ -36,6 +36,11 @@ _Avoid_: Alerta quando se referir à configuração salva.
 Ocorrência gerada quando uma Regra de alerta é atendida.
 _Avoid_: Notificação como termo canônico de UI.
 
+**Data de mercado**:
+Data à qual pertencem preços, indicadores e sinais processados pelo app.
+_Avoid_: Pregão. Use `dia de mercado` ou a data formatada diretamente quando
+isso for mais claro no texto visível.
+
 ## Example Dialogue
 
 Dev: A Lista de acompanhamento pode conter Ativos que o usuário não possui?

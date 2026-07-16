@@ -1025,6 +1025,7 @@ describe("PreferencesPage", () => {
         /O monitoramento automático é executado de terça a sábado, às 8h/,
       ),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Prévia do email")).not.toBeInTheDocument();
   });
 });
 

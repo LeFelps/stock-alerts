@@ -60,7 +60,7 @@ describe("JobRunsHistory", () => {
     );
     expect(
       await screen.findByText(
-        /cujo pregão mais recente já havia sido processado/,
+        /cuja data de mercado mais recente já havia sido processada/,
       ),
     ).toBeInTheDocument();
   });

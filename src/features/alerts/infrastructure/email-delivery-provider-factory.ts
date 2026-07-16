@@ -32,6 +32,7 @@ const emailDeliveryConfigSchema = z.object({
         });
       }
     }),
+  APP_BASE_URL: z.url("APP_BASE_URL must be an absolute URL").optional(),
   EMAIL_PROVIDER: z.enum(["resend"]).default("resend"),
   RESEND_API_KEY: z
     .string({ error: "RESEND_API_KEY is required for email delivery" })
@@ -47,8 +48,21 @@ export function createConfiguredEmailDeliveryProvider(
 
   return createResendEmailDeliveryProvider({
     apiKey: config.RESEND_API_KEY,
+    appBaseUrl: resolveAppBaseUrl(config.APP_BASE_URL, env),
     fromEmail: config.ALERT_EMAIL_FROM,
   });
+}
+
+function resolveAppBaseUrl(
+  configuredUrl: string | undefined,
+  env: ProviderEnv,
+) {
+  if (configuredUrl) return configuredUrl;
+
+  const vercelHost =
+    env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || env.VERCEL_URL?.trim();
+
+  return vercelHost ? `https://${vercelHost}` : "http://localhost:3000";
 }
 
 function extractSenderEmailAddress(sender: string) {

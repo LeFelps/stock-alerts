@@ -215,24 +215,26 @@ BRAPI_API_TOKEN=<brapi-token>
 EMAIL_PROVIDER=resend
 RESEND_API_KEY=<resend-key-starting-with-re_>
 ALERT_EMAIL_FROM="Stock Alerts <noreply.stock-alerts@fellcor.com>"
+APP_BASE_URL=http://localhost:3000
 
 CRON_SECRET=<random-cron-secret>
 ```
 
-| Variable               | Requirement                                           |
-| ---------------------- | ----------------------------------------------------- |
-| `AUTH_SECRET`          | Required by Auth.js                                   |
-| `AUTH_GOOGLE_ID`       | Required Google OAuth client ID                       |
-| `AUTH_GOOGLE_SECRET`   | Required Google OAuth client secret                   |
-| `DATABASE_URL`         | Required PostgreSQL connection string                 |
-| `ALLOWED_EMAILS`       | Optional comma/newline-separated allowlist            |
-| `ROLE_ACCESS_PASSWORD` | Required to unlock the `SUPER` role                   |
-| `MARKET_DATA_PROVIDER` | Optional; defaults to `brapi`                         |
-| `BRAPI_API_TOKEN`      | Required for normal production coverage               |
-| `EMAIL_PROVIDER`       | Optional; defaults to `resend`                        |
-| `RESEND_API_KEY`       | Required for email delivery and must start with `re_` |
-| `ALERT_EMAIL_FROM`     | Required and currently restricted to `fellcor.com`    |
-| `CRON_SECRET`          | Required by both scheduled routes                     |
+| Variable               | Requirement                                            |
+| ---------------------- | ------------------------------------------------------ |
+| `AUTH_SECRET`          | Required by Auth.js                                    |
+| `AUTH_GOOGLE_ID`       | Required Google OAuth client ID                        |
+| `AUTH_GOOGLE_SECRET`   | Required Google OAuth client secret                    |
+| `DATABASE_URL`         | Required PostgreSQL connection string                  |
+| `ALLOWED_EMAILS`       | Optional comma/newline-separated allowlist             |
+| `ROLE_ACCESS_PASSWORD` | Required to unlock the `SUPER` role                    |
+| `MARKET_DATA_PROVIDER` | Optional; defaults to `brapi`                          |
+| `BRAPI_API_TOKEN`      | Required for normal production coverage                |
+| `EMAIL_PROVIDER`       | Optional; defaults to `resend`                         |
+| `RESEND_API_KEY`       | Required for email delivery and must start with `re_`  |
+| `ALERT_EMAIL_FROM`     | Required and currently restricted to `fellcor.com`     |
+| `APP_BASE_URL`         | Optional on Vercel; base URL for links in alert emails |
+| `CRON_SECRET`          | Required by both scheduled routes                      |
 
 Environment files are ignored by Git except for `.env.example`. None of these variables should use a `NEXT_PUBLIC_` prefix.
 

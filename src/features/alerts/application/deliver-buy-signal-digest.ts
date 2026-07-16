@@ -1,6 +1,9 @@
 import type { Signal } from "@/features/signals/domain/signal";
 
-import type { AlertEmailDelivery } from "../domain/email-delivery";
+import type {
+  AlertEmailDelivery,
+  BuySignalDigestAsset,
+} from "../domain/email-delivery";
 import type {
   AlertEmailDeliveryRepository,
   EmailDeliveryProvider,
@@ -20,6 +23,7 @@ export type BuySignalDigestDeliveryOutcome =
 
 export async function deliverBuySignalDigest(
   command: {
+    assets: BuySignalDigestAsset[];
     emailAlertsEnabled: boolean;
     marketDate: string;
     recipientEmail: string;
@@ -40,6 +44,19 @@ export async function deliverBuySignalDigest(
   ) {
     throw new Error(
       "Buy signal digest contains signals from another market date",
+    );
+  }
+
+  const assetsBySymbol = new Map(
+    command.assets.map((asset) => [asset.symbol, asset]),
+  );
+  const missingAsset = command.signals.find(
+    (signal) => !assetsBySymbol.has(signal.symbol),
+  );
+
+  if (missingAsset) {
+    throw new Error(
+      `Buy signal digest is missing asset data for ${missingAsset.symbol}`,
     );
   }
 
@@ -73,10 +90,16 @@ export async function deliverBuySignalDigest(
   const reservedSignals = command.signals.filter((signal) =>
     reservedSignalIds.has(signal.id),
   );
+  const reservedSymbols = new Set(
+    reservedSignals.map((signal) => signal.symbol),
+  );
   const deliveryIds = deliveries.map((delivery) => delivery.id);
 
   try {
     const sendResult = await emailDeliveryProvider.sendBuySignalDigest({
+      assets: command.assets.filter((asset) =>
+        reservedSymbols.has(asset.symbol),
+      ),
       marketDate: command.marketDate,
       recipientEmail: command.recipientEmail,
       signals: reservedSignals,

@@ -245,8 +245,8 @@ function IgnoredHeader() {
             </button>
           </HoverCardTrigger>
           <HoverCardContent className="text-left text-sm font-normal whitespace-normal">
-            Perfis e Ativos cujo pregão mais recente já havia sido processado.
-            Nenhuma nova análise ou envio de email foi necessário.
+            Perfis e Ativos cuja data de mercado mais recente já havia sido
+            processada. Nenhuma nova análise ou envio de email foi necessário.
           </HoverCardContent>
         </HoverCard>
       </span>

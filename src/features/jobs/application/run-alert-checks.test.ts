@@ -53,7 +53,13 @@ describe("runAlertChecks", () => {
       expect.objectContaining({ eligibleMarketDate: "2026-07-17" }),
     );
     expect(deps.emailDeliveryProvider.sendBuySignalDigest).toHaveBeenCalledWith(
-      expect.objectContaining({ marketDate: "2026-07-17", signals: [signal] }),
+      expect.objectContaining({
+        assets: [
+          expect.objectContaining({ currentPrice: 220, symbol: "PETR4" }),
+        ],
+        marketDate: "2026-07-17",
+        signals: [signal],
+      }),
     );
   });
 
@@ -84,6 +90,22 @@ describe("runAlertChecks", () => {
     ).toHaveBeenCalledTimes(1);
     expect(deps.emailDeliveryProvider.sendBuySignalDigest).toHaveBeenCalledWith(
       {
+        assets: [
+          {
+            currency: "BRL",
+            currentPrice: 220,
+            logoUrl: "https://icons.brapi.dev/icons/PETR4.svg",
+            longName: "PETR4 S.A.",
+            symbol: "PETR4",
+          },
+          {
+            currency: "BRL",
+            currentPrice: 220,
+            logoUrl: "https://icons.brapi.dev/icons/VALE3.svg",
+            longName: "VALE3 S.A.",
+            symbol: "VALE3",
+          },
+        ],
         marketDate: "2026-07-13",
         recipientEmail: "profile-1@example.com",
         signals: [petrSignal, valeSignal],
@@ -662,6 +684,8 @@ function createTarget(
 ): AlertCheckTarget {
   return {
     emailAlertsEnabled,
+    logoUrl: `https://icons.brapi.dev/icons/${symbol}.svg`,
+    longName: `${symbol} S.A.`,
     profileId: toProfileId(profileId),
     recipientEmail: `${profileId}@example.com`,
     symbol,

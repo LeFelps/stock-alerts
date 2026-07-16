@@ -16,6 +16,8 @@ export function createDrizzleAlertCheckTargetRepository(
       const rows = await database
         .select({
           emailAlertsEnabled: profiles.emailAlertsEnabled,
+          logoUrl: watchlistItems.logoUrl,
+          longName: watchlistItems.longName,
           profileId: profiles.id,
           recipientEmail: users.email,
           symbol: watchlistItems.symbol,
@@ -28,6 +30,8 @@ export function createDrizzleAlertCheckTargetRepository(
 
       return rows.map((row) => ({
         emailAlertsEnabled: row.emailAlertsEnabled,
+        logoUrl: row.logoUrl,
+        longName: row.longName,
         profileId: row.profileId as ProfileId,
         recipientEmail: row.recipientEmail,
         symbol: row.symbol,
