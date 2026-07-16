@@ -8,9 +8,13 @@ import type {
   BuySignalDigestAsset,
   BuySignalDigestEmail,
 } from "../domain/email-delivery";
-import { DIGEST_EXTERNAL_LINK_ICON_DATA_URI } from "./email-assets";
+import {
+  DIGEST_ASSET_FALLBACK_ICON_DATA_URI,
+  DIGEST_EXTERNAL_LINK_ICON_DATA_URI,
+} from "./email-assets";
 
 type DigestHtmlOptions = {
+  assetFallbackIconSrc?: string;
   externalLinkIconSrc?: string;
 };
 
@@ -51,13 +55,20 @@ export function buildDigestHtmlBody(
   email: BuySignalDigestEmail,
   appBaseUrl: string,
   {
+    assetFallbackIconSrc = DIGEST_ASSET_FALLBACK_ICON_DATA_URI,
     externalLinkIconSrc = DIGEST_EXTERNAL_LINK_ICON_DATA_URI,
   }: DigestHtmlOptions = {},
 ) {
   const assets = sortedAssets(email.assets);
   const assetRows = assets
     .map((asset) =>
-      buildAssetRow(email, asset, appBaseUrl, externalLinkIconSrc),
+      buildAssetRow(
+        email,
+        asset,
+        appBaseUrl,
+        assetFallbackIconSrc,
+        externalLinkIconSrc,
+      ),
     )
     .join("");
   const assetCount = assets.length;
@@ -95,6 +106,7 @@ export function buildDigestHtmlBody(
         .email-primary-text { color: #60a5fa !important; }
         .email-border { border-color: #3f3f46 !important; }
         .email-link { color: #60a5fa !important; border-color: #52525b !important; }
+        .email-logo-fallback { background-color: #172554 !important; }
         .email-buy-badge {
           background: #052e16 !important;
           border-color: #166534 !important;
@@ -147,6 +159,7 @@ function buildAssetRow(
   email: BuySignalDigestEmail,
   asset: BuySignalDigestAsset,
   appBaseUrl: string,
+  assetFallbackIconSrc: string,
   externalLinkIconSrc: string,
 ) {
   const detailsUrl = buildAssetDetailsUrl(appBaseUrl, asset.symbol);
@@ -158,7 +171,7 @@ function buildAssetRow(
     <td class="email-border" style="padding:18px 16px;border-bottom:1px solid #e4e4e7;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
         <tr>
-          <td width="52" valign="middle">${buildAssetLogo(asset)}</td>
+          <td width="52" valign="middle">${buildAssetLogo(asset, appBaseUrl, assetFallbackIconSrc)}</td>
           <td valign="middle" style="padding-left:12px;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
               <tr>
@@ -204,14 +217,18 @@ function buildSignalTrigger(
   return `<div style="margin-top:7px;font-size:14px;font-weight:600;line-height:1.4;white-space:nowrap;">${content}</div>`;
 }
 
-function buildAssetLogo(asset: BuySignalDigestAsset) {
+function buildAssetLogo(
+  asset: BuySignalDigestAsset,
+  appBaseUrl: string,
+  fallbackIconSrc: string,
+) {
   const logoUrl = safeRemoteUrl(asset.logoUrl);
 
   if (logoUrl) {
-    return `<img class="email-muted-bg email-muted-text" src="${escapeHtml(logoUrl)}" alt="${escapeHtml(asset.symbol.slice(0, 3))}" width="44" height="44" style="display:block;width:44px;height:44px;border:0;border-radius:8px;object-fit:contain;background:#f4f4f5;color:#52525b;font-size:13px;font-weight:700;line-height:44px;text-align:center;">`;
+    return `<img class="email-logo-fallback" src="${escapeHtml(buildAssetLogoUrl(appBaseUrl, asset.symbol))}" alt="Logo de ${escapeHtml(asset.symbol)}" width="44" height="44" style="display:block;width:44px;height:44px;border:0;border-radius:8px;object-fit:contain;background:#eff6ff;">`;
   }
 
-  return `<div role="img" aria-label="Ícone de ${escapeHtml(asset.symbol)}" class="email-muted-bg email-muted-text" style="width:44px;height:44px;border-radius:8px;background:#f4f4f5;color:#52525b;font-size:13px;font-weight:700;line-height:44px;text-align:center;">${escapeHtml(asset.symbol.slice(0, 3))}</div>`;
+  return `<img class="email-logo-fallback" src="${escapeHtml(fallbackIconSrc)}" alt="Logo padrão de ${escapeHtml(asset.symbol)}" width="44" height="44" style="display:block;width:44px;height:44px;border:0;border-radius:8px;background:#eff6ff;">`;
 }
 
 function sortedAssets(assets: BuySignalDigestAsset[]) {
@@ -232,6 +249,13 @@ function signalsForAsset(
 function buildAssetDetailsUrl(appBaseUrl: string, symbol: string) {
   return new URL(
     `/dashboard/tickers/${encodeURIComponent(symbol)}`,
+    appBaseUrl,
+  ).toString();
+}
+
+function buildAssetLogoUrl(appBaseUrl: string, symbol: string) {
+  return new URL(
+    `/api/alert-asset-logos/${encodeURIComponent(symbol)}`,
     appBaseUrl,
   ).toString();
 }
