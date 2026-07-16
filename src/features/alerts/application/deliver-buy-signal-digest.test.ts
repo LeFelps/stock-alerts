@@ -30,6 +30,7 @@ describe("deliverBuySignalDigest", () => {
 
     const result = await deliverBuySignalDigest(
       {
+        assets: [createAsset("PETR4"), createAsset("VALE3")],
         emailAlertsEnabled: true,
         marketDate: "2026-07-13",
         recipientEmail: "user@example.com",
@@ -48,6 +49,7 @@ describe("deliverBuySignalDigest", () => {
       signalIds: [first.id, second.id],
     });
     expect(provider.sendBuySignalDigest).toHaveBeenCalledWith({
+      assets: [createAsset("VALE3")],
       marketDate: "2026-07-13",
       recipientEmail: "user@example.com",
       signals: [second],
@@ -70,6 +72,7 @@ describe("deliverBuySignalDigest", () => {
 
     const result = await deliverBuySignalDigest(
       {
+        assets: [createAsset("PETR4")],
         emailAlertsEnabled: false,
         marketDate: "2026-07-13",
         recipientEmail: "user@example.com",
@@ -108,6 +111,7 @@ describe("deliverBuySignalDigest", () => {
 
     const result = await deliverBuySignalDigest(
       {
+        assets: [createAsset("PETR4")],
         emailAlertsEnabled: true,
         marketDate: "2026-07-13",
         recipientEmail: "user@example.com",
@@ -134,6 +138,7 @@ describe("deliverBuySignalDigest", () => {
 
     const result = await deliverBuySignalDigest(
       {
+        assets: [createAsset("PETR4")],
         emailAlertsEnabled: true,
         marketDate: "2026-07-13",
         recipientEmail: "user@example.com",
@@ -156,6 +161,7 @@ describe("deliverBuySignalDigest", () => {
     await expect(
       deliverBuySignalDigest(
         {
+          assets: [createAsset("PETR4")],
           emailAlertsEnabled: true,
           marketDate: "2026-07-14",
           recipientEmail: "user@example.com",
@@ -167,6 +173,29 @@ describe("deliverBuySignalDigest", () => {
         },
       ),
     ).rejects.toThrow("another market date");
+  });
+
+  it("rejects a digest without display data for every signaled Ativo", async () => {
+    const repository = createRepository();
+    const provider = createProvider();
+
+    await expect(
+      deliverBuySignalDigest(
+        {
+          assets: [],
+          emailAlertsEnabled: true,
+          marketDate: "2026-07-13",
+          recipientEmail: "user@example.com",
+          signals: [createSignal("signal-1", "PETR4")],
+        },
+        {
+          alertEmailDeliveryRepository: repository,
+          emailDeliveryProvider: provider,
+        },
+      ),
+    ).rejects.toThrow("missing asset data for PETR4");
+
+    expect(repository.reserveMany).not.toHaveBeenCalled();
   });
 });
 
@@ -194,6 +223,16 @@ function createSignal(id: string, symbol: string): Signal {
     profileId: toProfileId("profile-1"),
     reason: "EMA6_CROSSED_ABOVE_EMA42",
     signalType: "BUY",
+    symbol,
+  };
+}
+
+function createAsset(symbol: string) {
+  return {
+    currency: "BRL",
+    currentPrice: symbol === "PETR4" ? 32.5 : 61.25,
+    logoUrl: `https://icons.brapi.dev/icons/${symbol}.svg`,
+    longName: symbol === "PETR4" ? "Petrobras" : "Vale",
     symbol,
   };
 }

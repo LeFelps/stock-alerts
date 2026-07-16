@@ -5,11 +5,15 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
-import { EMA_COLORS } from "@/features/indicators/ui/ema-colors";
 import { AssetLogo } from "@/features/watchlist/ui/asset-logo";
 import { formatHumanDate, formatHumanDateTime } from "@/lib/format-date";
 
 import type { Signal } from "../domain/signal";
+import {
+  formatSignalTrigger,
+  formatSignalType,
+  getSignalTriggerSegments,
+} from "./signal-presentation";
 
 export type SignalHistoryItem = {
   asset: { logoUrl: string | null; symbol: string };
@@ -53,12 +57,12 @@ const signalColumns: ColumnDef<SignalHistoryItem>[] = [
     id: "symbol",
   },
   {
-    accessorFn: ({ signal }) => formatSignalType(signal),
+    accessorFn: ({ signal }) => formatSignalType(signal.signalType),
     cell: ({ row }) => (
       <Badge
         variant={row.original.signal.signalType === "BUY" ? "buy" : "secondary"}
       >
-        {formatSignalType(row.original.signal)}
+        {formatSignalType(row.original.signal.signalType)}
       </Badge>
     ),
     header: "Tipo",
@@ -90,31 +94,23 @@ const signalColumnLabels = {
   type: "Tipo",
 };
 
-function formatSignalType(signal: Signal) {
-  return signal.signalType === "BUY" ? "Compra técnica" : signal.signalType;
-}
-
 function formatSignalReason(signal: Signal) {
-  switch (signal.reason) {
-    case "EMA6_CROSSED_ABOVE_EMA42":
-      return "MME6 > MME42";
-    case "EMA6_CROSSED_ABOVE_EMA13_WHILE_ABOVE_EMA42":
-      return "MME6 > MME13 > MME42";
-  }
+  return formatSignalTrigger(signal.reason);
 }
 
 function SignalReason({ signal }: { signal: Signal }) {
+  const segments = getSignalTriggerSegments(signal.reason);
+
   return (
     <span className="font-medium">
-      <span style={{ color: EMA_COLORS.ema6 }}>MME6</span>
-      <span className="text-muted-foreground"> &gt; </span>
-      {signal.reason === "EMA6_CROSSED_ABOVE_EMA13_WHILE_ABOVE_EMA42" ? (
-        <>
-          <span style={{ color: EMA_COLORS.ema13 }}>MME13</span>
-          <span className="text-muted-foreground"> &gt; </span>
-        </>
-      ) : null}
-      <span style={{ color: EMA_COLORS.ema42 }}>MME42</span>
+      {segments.map((segment, index) => (
+        <span key={segment.label}>
+          {index > 0 ? (
+            <span className="text-muted-foreground"> &gt; </span>
+          ) : null}
+          <span style={{ color: segment.color }}>{segment.label}</span>
+        </span>
+      ))}
     </span>
   );
 }

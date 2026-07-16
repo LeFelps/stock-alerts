@@ -8,6 +8,8 @@ professional, minimal, and functional appearance.
 - Use Brazilian Portuguese for all visible text.
 - Prefer short, direct, action-oriented text.
 - Use the terms defined in `CONTEXT.md` for product concepts.
+- Never use `pregão` in product copy. Prefer `data de mercado`, `dia de
+mercado`, or the formatted date directly, according to context.
 
 ## Composition
 

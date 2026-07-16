@@ -4,11 +4,18 @@ import { toProfileId } from "@/features/profiles/domain/profile";
 import { toSignalId, type Signal } from "@/features/signals/domain/signal";
 
 import {
-  buildDigestSubject,
-  buildDigestTextBody,
   createResendEmailDeliveryProvider,
   type ResendEmailClient,
 } from "./resend-email-delivery-provider";
+import {
+  buildDigestHtmlBody,
+  buildDigestSubject,
+  buildDigestTextBody,
+} from "../ui/buy-signal-digest-email";
+import {
+  DIGEST_EXTERNAL_LINK_ICON_CONTENT_ID,
+  DIGEST_EXTERNAL_LINK_ICON_PNG_BASE64,
+} from "../ui/email-assets";
 
 describe("Resend buy signal digest delivery", () => {
   it("sends the existing digest content and returns the Resend message ID", async () => {
@@ -20,11 +27,14 @@ describe("Resend buy signal digest delivery", () => {
     const provider = createResendEmailDeliveryProvider(
       {
         apiKey: "re_project_key",
+        appBaseUrl: "https://stock-alerts.example.com",
         fromEmail: "Stock Alerts <noreply.stock-alerts@fellcor.com>",
       },
       { send } as ResendEmailClient,
+      createAvailableImageFetcher(),
     );
     const email = {
+      assets: [createAsset("PETR4", 32.57)],
       marketDate: "2026-07-13",
       recipientEmail: "user@example.com",
       signals: [createSignal("signal-1", "PETR4", "EMA6_CROSSED_ABOVE_EMA42")],
@@ -34,9 +44,20 @@ describe("Resend buy signal digest delivery", () => {
       providerMessageId: "resend-message-1",
     });
     expect(send).toHaveBeenCalledWith({
+      attachments: [
+        {
+          content: DIGEST_EXTERNAL_LINK_ICON_PNG_BASE64,
+          contentId: DIGEST_EXTERNAL_LINK_ICON_CONTENT_ID,
+          contentType: "image/png",
+          filename: "external-link.png",
+        },
+      ],
       from: "Stock Alerts <noreply.stock-alerts@fellcor.com>",
-      subject: "[ALERTA] Sugestões de compra — 13/07/2026",
-      text: buildDigestTextBody(email),
+      html: buildDigestHtmlBody(email, "https://stock-alerts.example.com", {
+        externalLinkIconSrc: `cid:${DIGEST_EXTERNAL_LINK_ICON_CONTENT_ID}`,
+      }),
+      subject: "[Stock Alerts] Sinais de compra — 13/07/2026",
+      text: buildDigestTextBody(email, "https://stock-alerts.example.com"),
       to: ["user@example.com"],
     });
   });
@@ -54,13 +75,16 @@ describe("Resend buy signal digest delivery", () => {
     const provider = createResendEmailDeliveryProvider(
       {
         apiKey: "re_project_key",
+        appBaseUrl: "https://stock-alerts.example.com",
         fromEmail: "alerts@fellcor.com",
       },
       { send } as ResendEmailClient,
+      createAvailableImageFetcher(),
     );
 
     await expect(
       provider.sendBuySignalDigest({
+        assets: [createAsset("PETR4", 32.57)],
         marketDate: "2026-07-13",
         recipientEmail: "user@example.com",
         signals: [
@@ -72,8 +96,53 @@ describe("Resend buy signal digest delivery", () => {
     );
   });
 
-  it("keeps the date and deterministically grouped body formatting", () => {
-    const body = buildDigestTextBody({
+  it("uses the neutral asset fallback when a remote logo is missing", async () => {
+    const send = vi.fn().mockResolvedValue({
+      data: { id: "resend-message-1" },
+      error: null,
+      headers: null,
+    });
+    const fetchRemoteImage = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response("Not found", {
+        headers: { "content-type": "text/html" },
+        status: 404,
+      }),
+    );
+    const provider = createResendEmailDeliveryProvider(
+      {
+        apiKey: "re_project_key",
+        appBaseUrl: "https://stock-alerts.example.com",
+        fromEmail: "alerts@fellcor.com",
+      },
+      { send } as ResendEmailClient,
+      fetchRemoteImage,
+    );
+
+    await provider.sendBuySignalDigest({
+      assets: [createAsset("PETR4", 32.57)],
+      marketDate: "2026-07-13",
+      recipientEmail: "user@example.com",
+      signals: [createSignal("signal-1", "PETR4", "EMA6_CROSSED_ABOVE_EMA42")],
+    });
+
+    expect(fetchRemoteImage).toHaveBeenCalledWith(
+      "https://icons.brapi.dev/icons/PETR4.svg",
+      expect.objectContaining({
+        headers: { Accept: "image/*" },
+        redirect: "follow",
+      }),
+    );
+    const sentEmail = send.mock.calls[0]?.[0];
+    expect(sentEmail?.html).toContain('aria-label="Ícone de PETR4"');
+    expect(sentEmail?.html).toContain(">PET</div>");
+    expect(sentEmail?.html).not.toContain(
+      "https://icons.brapi.dev/icons/PETR4.svg",
+    );
+  });
+
+  it("keeps the date, price, signal, and details link in the text fallback", () => {
+    const email = {
+      assets: [createAsset("VALE3", 61.25), createAsset("PETR4", 32.57)],
       marketDate: "2026-07-13",
       recipientEmail: "user@example.com",
       signals: [
@@ -85,22 +154,120 @@ describe("Resend buy signal digest delivery", () => {
           "EMA6_CROSSED_ABOVE_EMA13_WHILE_ABOVE_EMA42",
         ),
       ],
-    });
+    };
+    const body = buildDigestTextBody(
+      {
+        ...email,
+      },
+      "https://stock-alerts.example.com",
+    );
 
     expect(buildDigestSubject("2026-07-13")).toBe(
-      "[ALERTA] Sugestões de compra — 13/07/2026",
+      "[Stock Alerts] Sinais de compra — 13/07/2026",
     );
-    expect(body).toContain("Sugestões de compra para 13/07/2026:");
-    expect(body.indexOf("Ativo: PETR4")).toBeLessThan(
-      body.indexOf("Ativo: VALE3"),
+    expect(body).toContain("Sinais de compra detectados em 13/07/2026");
+    expect(body.indexOf("PETR4 — Petrobras")).toBeLessThan(
+      body.indexOf("VALE3 — Vale"),
     );
-    expect(body.match(/Ativo: PETR4/g)).toHaveLength(1);
+    expect(body.match(/PETR4 — Petrobras/g)).toHaveLength(1);
+    expect(body).toContain("Sinal: Compra técnica");
+    expect(body).toContain("Preço: R$ 32,57");
     expect(body).toContain(
-      "MME6 cruzou acima da MME13 enquanto estava acima da MME42.",
+      "Ver detalhes: https://stock-alerts.example.com/dashboard/tickers/PETR4",
     );
+    expect(body).toContain("Gatilho: MME6 > MME42");
+    expect(body).toContain("Gatilho: MME6 > MME13 > MME42");
+    expect(body).not.toContain("Fechamento");
     expect(body).toContain("não constitui recomendação de investimento");
   });
+
+  it("renders an app-aligned HTML digest with highlighted date and asset rows", () => {
+    const html = buildDigestHtmlBody(
+      {
+        assets: [createAsset("VALE3", 61.25), createAsset("PETR4", 32.57)],
+        marketDate: "2026-07-13",
+        recipientEmail: "user@example.com",
+        signals: [
+          createSignal("signal-1", "PETR4", "EMA6_CROSSED_ABOVE_EMA42"),
+          createSignal(
+            "signal-2",
+            "VALE3",
+            "EMA6_CROSSED_ABOVE_EMA13_WHILE_ABOVE_EMA42",
+          ),
+        ],
+      },
+      "https://stock-alerts.example.com",
+    );
+
+    expect(html).toContain(
+      "font-size:30px;font-weight:800;letter-spacing:-0.025em",
+    );
+    expect(html).toContain(">Stock Alerts</div>");
+    expect(html).toContain("13 de julho de 2026");
+    expect(html).toContain("https://icons.brapi.dev/icons/PETR4.svg");
+    expect(html).toContain("Petrobras");
+    expect(html).toContain("R$ 32,57");
+    expect(html).toContain(">Compra técnica</span>");
+    expect(html).toContain('style="color:#2563eb;">MME6</span>');
+    expect(html).toContain('style="color:#c026d3;">MME13</span>');
+    expect(html).toContain('style="color:#ea580c;">MME42</span>');
+    expect(html).toContain(
+      'href="https://stock-alerts.example.com/dashboard/tickers/PETR4"',
+    );
+    expect(html).toContain('src="data:image/png;base64,');
+    expect(html).not.toContain("<svg");
+    expect(html).toContain("max-width:760px");
+    expect(html).toContain("@media only screen and (max-width: 620px)");
+    expect(html).toContain("@media (prefers-color-scheme: dark)");
+
+    for (const color of [
+      "#fafafa",
+      "#18181b",
+      "#ffffff",
+      "#f4f4f5",
+      "#52525b",
+      "#e4e4e7",
+      "#2563eb",
+      "#0a0a0a",
+      "#ededed",
+      "#27272a",
+      "#a1a1aa",
+      "#3f3f46",
+      "#60a5fa",
+    ]) {
+      expect(html).toContain(color);
+    }
+
+    expect(html.indexOf("PETR4")).toBeLessThan(html.indexOf("VALE3"));
+    expect(html.indexOf("Petrobras")).toBeLessThan(html.indexOf("R$ 32,57"));
+    expect(html.indexOf("R$ 32,57")).toBeLessThan(
+      html.indexOf("Compra técnica"),
+    );
+    expect(html).not.toContain(">SA<");
+    expect(html).not.toContain("Novo alerta");
+    expect(html).not.toContain("Data do");
+    expect(html.toLowerCase()).not.toContain(["pre", "gão"].join(""));
+    expect(html).not.toContain("Fechamento");
+  });
 });
+
+function createAsset(symbol: "PETR4" | "VALE3", currentPrice: number) {
+  return {
+    currency: "BRL",
+    currentPrice,
+    logoUrl: `https://icons.brapi.dev/icons/${symbol}.svg`,
+    longName: symbol === "PETR4" ? "Petrobras" : "Vale",
+    symbol,
+  };
+}
+
+function createAvailableImageFetcher() {
+  return vi
+    .fn<typeof fetch>()
+    .mockResolvedValue(
+      new Response("logo", { headers: { "content-type": "image/svg+xml" } }),
+    );
+}
 
 function createSignal(
   id: string,

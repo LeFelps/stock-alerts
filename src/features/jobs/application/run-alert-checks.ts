@@ -3,6 +3,7 @@ import type {
   AlertEmailDeliveryRepository,
   EmailDeliveryProvider,
 } from "@/features/alerts/application/ports";
+import type { BuySignalDigestAsset } from "@/features/alerts/domain/email-delivery";
 import { calculateIndicatorSnapshotsFromPrices } from "@/features/indicators/application/calculate-indicators";
 import type { IndicatorSnapshotRepository } from "@/features/indicators/application/ports";
 import type {
@@ -92,6 +93,7 @@ export async function runAlertChecks(
     const digestCandidates = new Map<
       string,
       {
+        assets: Map<string, BuySignalDigestAsset>;
         checkpoints: Array<{
           marketDate: string;
           profileId: AlertCheckTarget["profileId"];
@@ -192,10 +194,18 @@ export async function runAlertChecks(
               }
 
               const group = digestCandidates.get(target.profileId) ?? {
+                assets: new Map<string, BuySignalDigestAsset>(),
                 checkpoints: [],
                 signals: [],
                 target,
               };
+              group.assets.set(symbol, {
+                currency: latestSnapshot.currency,
+                currentPrice: latestSnapshot.close,
+                logoUrl: target.logoUrl,
+                longName: target.longName,
+                symbol,
+              });
               group.signals.push(...eligibleSignals);
               group.checkpoints.push({
                 marketDate: latestSnapshot.marketDate,
@@ -221,10 +231,16 @@ export async function runAlertChecks(
       }
     }
 
-    for (const { checkpoints, signals, target } of digestCandidates.values()) {
+    for (const {
+      assets,
+      checkpoints,
+      signals,
+      target,
+    } of digestCandidates.values()) {
       try {
         const outcome = await deliverBuySignalDigest(
           {
+            assets: [...assets.values()],
             emailAlertsEnabled: target.emailAlertsEnabled,
             marketDate: eligibleMarketDate,
             recipientEmail: target.recipientEmail,

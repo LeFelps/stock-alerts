@@ -27,7 +27,16 @@ export type AlertEmailDelivery = {
   updatedAt: Date;
 };
 
+export type BuySignalDigestAsset = {
+  currency: string;
+  currentPrice: number;
+  logoUrl: string | null;
+  longName: string | null;
+  symbol: string;
+};
+
 export type BuySignalDigestEmail = {
+  assets: BuySignalDigestAsset[];
   marketDate: string;
   recipientEmail: string;
   signals: Signal[];

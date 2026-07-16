@@ -78,4 +78,14 @@ describe("email delivery provider factory", () => {
       }),
     ).toThrow();
   });
+
+  it("rejects a non-absolute app URL used by email links", () => {
+    expect(() =>
+      createConfiguredEmailDeliveryProvider({
+        ALERT_EMAIL_FROM: "alerts@fellcor.com",
+        APP_BASE_URL: "stock-alerts.example.com",
+        RESEND_API_KEY: "re_stock_alerts",
+      }),
+    ).toThrow("APP_BASE_URL must be an absolute URL");
+  });
 });
