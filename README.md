@@ -1,8 +1,31 @@
 # Stock Alerts
 
+<div align="center">
+
+[![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React_19-087EA4?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com/)
+
+</div>
+
 Stock Alerts is a study project for monitoring a personal list of assets traded on the Brazilian market. It was built to explore the Next.js App Router, feature-oriented application architecture, scheduled background work, external data providers, and email delivery.
 
 The application stores daily market data, calculates exponential moving averages, records technical buy signals, and displays the results in an authenticated dashboard. It is not intended to provide investment advice.
+
+## Index
+
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [The `SUPER` role](#the-super-role)
+- [How the monitoring job works](#how-the-monitoring-job-works)
+- [Hosting](#hosting)
+  - [Required dependencies](#required-dependencies)
+  - [Setup](#setup)
+  - [Scheduled routes](#scheduled-routes)
+- [Project structure](#project-structure)
+- [Scripts](#scripts)
 
 ## Screenshots
 
