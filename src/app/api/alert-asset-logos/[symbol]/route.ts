@@ -4,6 +4,11 @@ const CACHE_FOR_ONE_DAY =
   "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800";
 const CACHE_FOR_ONE_HOUR =
   "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400";
+const SAFE_IMAGE_HEADERS = {
+  "Content-Security-Policy": "default-src 'none'; sandbox",
+  "Cross-Origin-Resource-Policy": "cross-origin",
+  "X-Content-Type-Options": "nosniff",
+};
 const TICKER_SYMBOL_PATTERN = /^[A-Z0-9]{4,12}$/;
 
 export async function GET(
@@ -31,6 +36,7 @@ export async function GET(
     if (response.ok && contentType?.toLowerCase().startsWith("image/")) {
       return new Response(await response.arrayBuffer(), {
         headers: {
+          ...SAFE_IMAGE_HEADERS,
           "Cache-Control": CACHE_FOR_ONE_DAY,
           "Content-Type": contentType,
         },
@@ -50,6 +56,7 @@ function fallbackResponse() {
     ),
     {
       headers: {
+        ...SAFE_IMAGE_HEADERS,
         "Cache-Control": CACHE_FOR_ONE_HOUR,
         "Content-Type": "image/png",
       },
