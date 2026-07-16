@@ -13,6 +13,9 @@ import {
   buildDigestTextBody,
 } from "../ui/buy-signal-digest-email";
 import {
+  DIGEST_ASSET_FALLBACK_ICON_CONTENT_ID,
+  DIGEST_ASSET_FALLBACK_ICON_DATA_URI,
+  DIGEST_ASSET_FALLBACK_ICON_PNG_BASE64,
   DIGEST_EXTERNAL_LINK_ICON_CONTENT_ID,
   DIGEST_EXTERNAL_LINK_ICON_PNG_BASE64,
 } from "../ui/email-assets";
@@ -31,7 +34,6 @@ describe("Resend buy signal digest delivery", () => {
         fromEmail: "Stock Alerts <noreply.stock-alerts@fellcor.com>",
       },
       { send } as ResendEmailClient,
-      createAvailableImageFetcher(),
     );
     const email = {
       assets: [createAsset("PETR4", 32.57)],
@@ -46,6 +48,12 @@ describe("Resend buy signal digest delivery", () => {
     expect(send).toHaveBeenCalledWith({
       attachments: [
         {
+          content: DIGEST_ASSET_FALLBACK_ICON_PNG_BASE64,
+          contentId: DIGEST_ASSET_FALLBACK_ICON_CONTENT_ID,
+          contentType: "image/png",
+          filename: "asset-fallback.png",
+        },
+        {
           content: DIGEST_EXTERNAL_LINK_ICON_PNG_BASE64,
           contentId: DIGEST_EXTERNAL_LINK_ICON_CONTENT_ID,
           contentType: "image/png",
@@ -54,6 +62,7 @@ describe("Resend buy signal digest delivery", () => {
       ],
       from: "Stock Alerts <noreply.stock-alerts@fellcor.com>",
       html: buildDigestHtmlBody(email, "https://stock-alerts.example.com", {
+        assetFallbackIconSrc: `cid:${DIGEST_ASSET_FALLBACK_ICON_CONTENT_ID}`,
         externalLinkIconSrc: `cid:${DIGEST_EXTERNAL_LINK_ICON_CONTENT_ID}`,
       }),
       subject: "[Stock Alerts] Sinais de compra — 13/07/2026",
@@ -79,7 +88,6 @@ describe("Resend buy signal digest delivery", () => {
         fromEmail: "alerts@fellcor.com",
       },
       { send } as ResendEmailClient,
-      createAvailableImageFetcher(),
     );
 
     await expect(
@@ -96,48 +104,23 @@ describe("Resend buy signal digest delivery", () => {
     );
   });
 
-  it("uses the neutral asset fallback when a remote logo is missing", async () => {
-    const send = vi.fn().mockResolvedValue({
-      data: { id: "resend-message-1" },
-      error: null,
-      headers: null,
-    });
-    const fetchRemoteImage = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response("Not found", {
-        headers: { "content-type": "text/html" },
-        status: 404,
-      }),
-    );
-    const provider = createResendEmailDeliveryProvider(
+  it("uses the app-equivalent asset fallback icon when no logo is available", () => {
+    const asset = { ...createAsset("PETR4", 32.57), logoUrl: null };
+    const html = buildDigestHtmlBody(
       {
-        apiKey: "re_project_key",
-        appBaseUrl: "https://stock-alerts.example.com",
-        fromEmail: "alerts@fellcor.com",
+        assets: [asset],
+        marketDate: "2026-07-13",
+        recipientEmail: "user@example.com",
+        signals: [
+          createSignal("signal-1", "PETR4", "EMA6_CROSSED_ABOVE_EMA42"),
+        ],
       },
-      { send } as ResendEmailClient,
-      fetchRemoteImage,
+      "https://stock-alerts.example.com",
     );
 
-    await provider.sendBuySignalDigest({
-      assets: [createAsset("PETR4", 32.57)],
-      marketDate: "2026-07-13",
-      recipientEmail: "user@example.com",
-      signals: [createSignal("signal-1", "PETR4", "EMA6_CROSSED_ABOVE_EMA42")],
-    });
-
-    expect(fetchRemoteImage).toHaveBeenCalledWith(
-      "https://icons.brapi.dev/icons/PETR4.svg",
-      expect.objectContaining({
-        headers: { Accept: "image/*" },
-        redirect: "follow",
-      }),
-    );
-    const sentEmail = send.mock.calls[0]?.[0];
-    expect(sentEmail?.html).toContain('aria-label="Ícone de PETR4"');
-    expect(sentEmail?.html).toContain(">PET</div>");
-    expect(sentEmail?.html).not.toContain(
-      "https://icons.brapi.dev/icons/PETR4.svg",
-    );
+    expect(html).toContain(`src="${DIGEST_ASSET_FALLBACK_ICON_DATA_URI}"`);
+    expect(html).toContain('alt="Logo padrão de PETR4"');
+    expect(html).not.toContain(">PET</div>");
   });
 
   it("keeps the date, price, signal, and details link in the text fallback", () => {
@@ -204,7 +187,10 @@ describe("Resend buy signal digest delivery", () => {
     );
     expect(html).toContain(">Stock Alerts</div>");
     expect(html).toContain("13 de julho de 2026");
-    expect(html).toContain("https://icons.brapi.dev/icons/PETR4.svg");
+    expect(html).toContain(
+      "https://stock-alerts.example.com/api/alert-asset-logos/PETR4",
+    );
+    expect(html).not.toContain("https://icons.brapi.dev/icons/PETR4.svg");
     expect(html).toContain("Petrobras");
     expect(html).toContain("R$ 32,57");
     expect(html).toContain(">Compra técnica</span>");
@@ -259,14 +245,6 @@ function createAsset(symbol: "PETR4" | "VALE3", currentPrice: number) {
     longName: symbol === "PETR4" ? "Petrobras" : "Vale",
     symbol,
   };
-}
-
-function createAvailableImageFetcher() {
-  return vi
-    .fn<typeof fetch>()
-    .mockResolvedValue(
-      new Response("logo", { headers: { "content-type": "image/svg+xml" } }),
-    );
 }
 
 function createSignal(
