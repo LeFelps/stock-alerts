@@ -88,4 +88,19 @@ describe("email delivery provider factory", () => {
       }),
     ).toThrow("APP_BASE_URL must be an absolute URL");
   });
+
+  it("rejects a non-web app URL used by email links", () => {
+    for (const appBaseUrl of [
+      "mailto:user@example.com",
+      "ftp://stock-alerts.example.com",
+    ]) {
+      expect(() =>
+        createConfiguredEmailDeliveryProvider({
+          ALERT_EMAIL_FROM: "alerts@fellcor.com",
+          APP_BASE_URL: appBaseUrl,
+          RESEND_API_KEY: "re_stock_alerts",
+        }),
+      ).toThrow("APP_BASE_URL must use HTTP or HTTPS");
+    }
+  });
 });

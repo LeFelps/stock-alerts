@@ -32,7 +32,16 @@ const emailDeliveryConfigSchema = z.object({
         });
       }
     }),
-  APP_BASE_URL: z.url("APP_BASE_URL must be an absolute URL").optional(),
+  APP_BASE_URL: z
+    .url("APP_BASE_URL must be an absolute URL")
+    .refine((value) => {
+      try {
+        return ["http:", "https:"].includes(new URL(value).protocol);
+      } catch {
+        return true;
+      }
+    }, "APP_BASE_URL must use HTTP or HTTPS")
+    .optional(),
   EMAIL_PROVIDER: z.enum(["resend"]).default("resend"),
   RESEND_API_KEY: z
     .string({ error: "RESEND_API_KEY is required for email delivery" })

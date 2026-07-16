@@ -9,9 +9,9 @@ describe("alert asset logo route", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns and caches an available asset logo", async () => {
+  it("returns, caches, and sandboxes an available asset logo", async () => {
     const fetchLogo = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response("<svg>logo</svg>", {
+      new Response("<svg><script>malicious()</script></svg>", {
         headers: { "content-type": "image/svg+xml" },
       }),
     );
@@ -34,7 +34,16 @@ describe("alert asset logo route", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("image/svg+xml");
     expect(response.headers.get("cache-control")).toContain("s-maxage=86400");
-    await expect(response.text()).resolves.toBe("<svg>logo</svg>");
+    expect(response.headers.get("content-security-policy")).toBe(
+      "default-src 'none'; sandbox",
+    );
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("cross-origin-resource-policy")).toBe(
+      "cross-origin",
+    );
+    await expect(response.text()).resolves.toBe(
+      "<svg><script>malicious()</script></svg>",
+    );
   });
 
   it("returns the app fallback icon when the remote logo is missing", async () => {
@@ -58,6 +67,9 @@ describe("alert asset logo route", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("image/png");
     expect(response.headers.get("cache-control")).toContain("s-maxage=3600");
+    expect(response.headers.get("content-security-policy")).toBe(
+      "default-src 'none'; sandbox",
+    );
     expect(Buffer.from(await response.arrayBuffer()).toString("base64")).toBe(
       DIGEST_ASSET_FALLBACK_ICON_PNG_BASE64,
     );
