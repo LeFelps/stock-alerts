@@ -16,7 +16,10 @@ import { detectBuySignalsForProfile } from "@/features/signals/application/detec
 import type { SignalRepository } from "@/features/signals/application/ports";
 import type { Signal } from "@/features/signals/domain/signal";
 
-import { eligibleMarketDateForAlertCheck } from "../domain/eligible-market-date";
+import {
+  eligibleMarketDateForAlertCheck,
+  marketDataFetchThroughDateForAlertCheck,
+} from "../domain/eligible-market-date";
 import {
   emptyJobRunSummary,
   type JobRun,
@@ -75,7 +78,7 @@ export async function runAlertChecks(
   const startedAt = now();
   const eligibleMarketDate =
     command.eligibleMarketDate ?? eligibleMarketDateForAlertCheck(startedAt);
-  const fetchThroughDate = shiftCalendarDays(eligibleMarketDate, 1);
+  const fetchThroughDate = marketDataFetchThroughDateForAlertCheck(startedAt);
   const summary = emptyJobRunSummary();
   const jobRun = await jobRunRepository.start({
     eligibleMarketDate,
@@ -428,12 +431,6 @@ function marketDataFetchWindows(
   }
 
   return windows;
-}
-
-function shiftCalendarDays(calendarDate: string, days: number) {
-  const date = new Date(`${calendarDate}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
 }
 
 function shiftCalendarMonths(calendarDate: string, months: number) {
