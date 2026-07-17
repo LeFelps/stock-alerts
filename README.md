@@ -84,6 +84,14 @@ The scheduled alert check:
 5. Sends at most one eligible signal digest per profile and market date.
 6. Records checkpoints, delivery results, and the overall job summary.
 
+Price refreshes request data through the current São Paulo calendar date so
+the dashboard can store the freshest daily snapshot exposed by the provider.
+Alert evaluation excludes that date until the next calendar day, preventing an
+in-progress daily candle from generating a signal. The email date comes from
+the latest completed snapshot returned for each asset rather than assuming the
+provider has yesterday's data; delayed snapshots can therefore generate one
+deduplicated digest when they become available.
+
 The current dashboard suggestion is based on EMA alignment:
 
 | Alignment                        | Suggestion        |
