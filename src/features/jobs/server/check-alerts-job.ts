@@ -9,20 +9,36 @@ import { runAlertChecks } from "../application/run-alert-checks";
 import { createDrizzleAlertCheckCheckpointRepository } from "../infrastructure/drizzle-alert-checkpoint-repository";
 import { createDrizzleAlertCheckTargetRepository } from "../infrastructure/drizzle-alert-check-target-repository";
 import { createDrizzleJobRunRepository } from "../infrastructure/drizzle-job-run-repository";
+import { withPostgresAlertCheckJobLock } from "../infrastructure/postgres-alert-check-job-lock";
+
+export class AlertCheckJobAlreadyRunningError extends Error {
+  constructor() {
+    super("Alert check job is already running");
+    this.name = "AlertCheckJobAlreadyRunningError";
+  }
+}
 
 export async function runCheckAlertsJob(
   command: { eligibleMarketDate?: string } = {},
 ) {
-  return runAlertChecks(command, {
-    alertCheckCheckpointRepository:
-      createDrizzleAlertCheckCheckpointRepository(),
-    alertCheckTargetRepository: createDrizzleAlertCheckTargetRepository(),
-    alertEmailDeliveryRepository: createDrizzleAlertEmailDeliveryRepository(),
-    emailDeliveryProvider: createConfiguredEmailDeliveryProvider(),
-    indicatorSnapshotRepository: createDrizzleIndicatorSnapshotRepository(),
-    jobRunRepository: createDrizzleJobRunRepository(),
-    marketDataProvider: createConfiguredMarketDataProvider(),
-    priceSnapshotRepository: createDrizzlePriceSnapshotRepository(),
-    signalRepository: createDrizzleSignalRepository(),
-  });
+  const lockedResult = await withPostgresAlertCheckJobLock(() =>
+    runAlertChecks(command, {
+      alertCheckCheckpointRepository:
+        createDrizzleAlertCheckCheckpointRepository(),
+      alertCheckTargetRepository: createDrizzleAlertCheckTargetRepository(),
+      alertEmailDeliveryRepository: createDrizzleAlertEmailDeliveryRepository(),
+      emailDeliveryProvider: createConfiguredEmailDeliveryProvider(),
+      indicatorSnapshotRepository: createDrizzleIndicatorSnapshotRepository(),
+      jobRunRepository: createDrizzleJobRunRepository(),
+      marketDataProvider: createConfiguredMarketDataProvider(),
+      priceSnapshotRepository: createDrizzlePriceSnapshotRepository(),
+      signalRepository: createDrizzleSignalRepository(),
+    }),
+  );
+
+  if (!lockedResult.acquired) {
+    throw new AlertCheckJobAlreadyRunningError();
+  }
+
+  return lockedResult.value;
 }

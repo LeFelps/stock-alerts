@@ -5,6 +5,9 @@ import { triggerCheckAlertsJob } from "./trigger-check-alerts-job.action";
 const requireSuperProfileMock = vi.hoisted(() => vi.fn());
 const revalidatePathMock = vi.hoisted(() => vi.fn());
 const runCheckAlertsJobMock = vi.hoisted(() => vi.fn());
+const AlertCheckJobAlreadyRunningErrorMock = vi.hoisted(
+  () => class AlertCheckJobAlreadyRunningError extends Error {},
+);
 
 vi.mock("next/cache", () => ({ revalidatePath: revalidatePathMock }));
 
@@ -13,6 +16,7 @@ vi.mock("@/features/profiles/server/current-profile", () => ({
 }));
 
 vi.mock("./check-alerts-job", () => ({
+  AlertCheckJobAlreadyRunningError: AlertCheckJobAlreadyRunningErrorMock,
   runCheckAlertsJob: runCheckAlertsJobMock,
 }));
 
@@ -70,6 +74,18 @@ describe("triggerCheckAlertsJob", () => {
       status: "error",
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/jobs");
+  });
+
+  it("rejects an overlapping run without refreshing unchanged pages", async () => {
+    runCheckAlertsJobMock.mockRejectedValue(
+      new AlertCheckJobAlreadyRunningErrorMock(),
+    );
+
+    await expect(triggerCheckAlertsJob(triggerFormData())).resolves.toEqual({
+      error: "already_running",
+      status: "error",
+    });
+    expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 });
 

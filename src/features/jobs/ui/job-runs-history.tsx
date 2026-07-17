@@ -21,7 +21,10 @@ import {
   retryCheckAlertsJob,
   type RetryCheckAlertsJobResult,
 } from "../server/retry-check-alerts-job.action";
-import { triggerCheckAlertsJob } from "../server/trigger-check-alerts-job.action";
+import {
+  triggerCheckAlertsJob,
+  type TriggerCheckAlertsJobResult,
+} from "../server/trigger-check-alerts-job.action";
 
 export function JobRunsHistory({ jobRuns }: { jobRuns: JobRun[] }) {
   if (jobRuns.length === 0) {
@@ -152,7 +155,7 @@ function TriggerCheckAlertsButton() {
           return;
         }
 
-        toast.error("A execução falhou. Consulte o erro mais recente.");
+        toast.error(triggerErrorMessage(result.error));
       } catch {
         toast.error("Não foi possível executar a rotina. Tente novamente.");
       } finally {
@@ -316,11 +319,25 @@ function IgnoredHeader() {
 function retryErrorMessage(
   error: Extract<RetryCheckAlertsJobResult, { status: "error" }>["error"],
 ) {
+  if (error === "already_running") {
+    return "A rotina já está em execução.";
+  }
+
   if (error === "not_retryable") {
     return "A execução mais recente não pode mais ser repetida.";
   }
 
   return "A nova execução também falhou. Consulte o erro mais recente.";
+}
+
+function triggerErrorMessage(
+  error: Extract<TriggerCheckAlertsJobResult, { status: "error" }>["error"],
+) {
+  if (error === "already_running") {
+    return "A rotina já está em execução.";
+  }
+
+  return "A execução falhou. Consulte o erro mais recente.";
 }
 
 function formatStatus(jobRun: JobRun) {

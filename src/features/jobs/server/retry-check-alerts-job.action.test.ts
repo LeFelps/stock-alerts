@@ -7,6 +7,9 @@ const listRecentJobRunsMock = vi.hoisted(() => vi.fn());
 const requireSuperProfileMock = vi.hoisted(() => vi.fn());
 const revalidatePathMock = vi.hoisted(() => vi.fn());
 const runCheckAlertsJobMock = vi.hoisted(() => vi.fn());
+const AlertCheckJobAlreadyRunningErrorMock = vi.hoisted(
+  () => class AlertCheckJobAlreadyRunningError extends Error {},
+);
 
 vi.mock("next/cache", () => ({ revalidatePath: revalidatePathMock }));
 
@@ -23,6 +26,7 @@ vi.mock("../infrastructure/drizzle-job-run-repository", () => ({
 }));
 
 vi.mock("./check-alerts-job", () => ({
+  AlertCheckJobAlreadyRunningError: AlertCheckJobAlreadyRunningErrorMock,
   runCheckAlertsJob: runCheckAlertsJobMock,
 }));
 
@@ -127,6 +131,18 @@ describe("retryCheckAlertsJob", () => {
       status: "error",
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard/jobs");
+  });
+
+  it("rejects a retry while another alert check is running", async () => {
+    runCheckAlertsJobMock.mockRejectedValue(
+      new AlertCheckJobAlreadyRunningErrorMock(),
+    );
+
+    await expect(retryCheckAlertsJob(retryFormData())).resolves.toEqual({
+      error: "already_running",
+      status: "error",
+    });
+    expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 });
 
