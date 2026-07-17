@@ -5,6 +5,7 @@ import { emptyJobRunSummary, toJobRunId, type JobRun } from "../domain/job-run";
 import { JobRunsHistory } from "./job-runs-history";
 
 const retryCheckAlertsJobMock = vi.hoisted(() => vi.fn());
+const triggerCheckAlertsJobMock = vi.hoisted(() => vi.fn());
 const toastErrorMock = vi.hoisted(() => vi.fn());
 const toastSuccessMock = vi.hoisted(() => vi.fn());
 const writeTextMock = vi.hoisted(() => vi.fn());
@@ -17,10 +18,19 @@ vi.mock("../server/retry-check-alerts-job.action", () => ({
   retryCheckAlertsJob: retryCheckAlertsJobMock,
 }));
 
+vi.mock("../server/trigger-check-alerts-job.action", () => ({
+  triggerCheckAlertsJob: triggerCheckAlertsJobMock,
+}));
+
 describe("JobRunsHistory", () => {
   beforeEach(() => {
     retryCheckAlertsJobMock.mockReset();
     retryCheckAlertsJobMock.mockResolvedValue({
+      jobRunId: "job-run-3",
+      status: "success",
+    });
+    triggerCheckAlertsJobMock.mockReset();
+    triggerCheckAlertsJobMock.mockResolvedValue({
       jobRunId: "job-run-3",
       status: "success",
     });
@@ -78,7 +88,7 @@ describe("JobRunsHistory", () => {
       name: "Tentar novamente",
     });
 
-    expect(retryButton).toHaveClass("h-9", "sm:ml-auto");
+    expect(retryButton).toHaveClass("h-9", "sm:w-auto");
 
     fireEvent.change(
       screen.getByRole("textbox", { name: "Buscar na tabela" }),
@@ -101,6 +111,36 @@ describe("JobRunsHistory", () => {
   it("disables retry when the latest run succeeded", () => {
     render(<JobRunsHistory jobRuns={[createJobRun({ status: "SUCCESS" })]} />);
 
+    expect(
+      screen.getByRole("button", { name: "Tentar novamente" }),
+    ).toBeDisabled();
+  });
+
+  it("manually starts a fresh run independently from retry", async () => {
+    render(<JobRunsHistory jobRuns={[createJobRun({ status: "SUCCESS" })]} />);
+
+    const triggerButton = screen.getByRole("button", {
+      name: "Executar agora",
+    });
+    expect(triggerButton).toBeEnabled();
+
+    fireEvent.click(triggerButton);
+
+    await waitFor(() => expect(triggerCheckAlertsJobMock).toHaveBeenCalled());
+    expect(triggerCheckAlertsJobMock.mock.calls[0]?.[0].get("intent")).toBe(
+      "trigger",
+    );
+    expect(toastSuccessMock).toHaveBeenCalledWith(
+      "Execução concluída com sucesso.",
+    );
+  });
+
+  it("allows the first run to be triggered from the empty state", () => {
+    render(<JobRunsHistory jobRuns={[]} />);
+
+    expect(
+      screen.getByRole("button", { name: "Executar agora" }),
+    ).toBeEnabled();
     expect(
       screen.getByRole("button", { name: "Tentar novamente" }),
     ).toBeDisabled();
