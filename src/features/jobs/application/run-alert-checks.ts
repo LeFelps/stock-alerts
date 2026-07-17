@@ -75,6 +75,7 @@ export async function runAlertChecks(
   const startedAt = now();
   const eligibleMarketDate =
     command.eligibleMarketDate ?? eligibleMarketDateForAlertCheck(startedAt);
+  const fetchThroughDate = shiftCalendarDays(eligibleMarketDate, 1);
   const summary = emptyJobRunSummary();
   const jobRun = await jobRunRepository.start({
     eligibleMarketDate,
@@ -99,6 +100,7 @@ export async function runAlertChecks(
           profileId: AlertCheckTarget["profileId"];
           symbol: string;
         }>;
+        marketDate: string;
         signals: Signal[];
         target: AlertCheckTarget;
       }
@@ -108,10 +110,10 @@ export async function runAlertChecks(
       try {
         const storedSnapshots = (
           await priceSnapshotRepository.listForSymbol(symbol)
-        ).filter((snapshot) => snapshot.marketDate <= eligibleMarketDate);
+        ).filter((snapshot) => snapshot.marketDate <= fetchThroughDate);
         const fetchWindows = marketDataFetchWindows(
           storedSnapshots,
-          eligibleMarketDate,
+          fetchThroughDate,
         );
         const fetchedSnapshots: PriceSnapshot[] = [];
 
@@ -129,9 +131,8 @@ export async function runAlertChecks(
         }
 
         const snapshots = mergePriceHistory(storedSnapshots, fetchedSnapshots);
-        const latestSnapshot = snapshots.at(-1);
 
-        if (!latestSnapshot) {
+        if (snapshots.length === 0) {
           throw new Error("Market data response contained no daily prices");
         }
 
@@ -141,6 +142,17 @@ export async function runAlertChecks(
         await priceSnapshotRepository.upsertMany(fetchedSnapshots);
         await indicatorSnapshotRepository.upsertMany(indicatorSnapshots);
         summary.refreshedSymbols += 1;
+
+        const completedIndicatorSnapshots = indicatorSnapshots.filter(
+          (snapshot) => snapshot.marketDate <= eligibleMarketDate,
+        );
+        const latestCompletedSnapshot = snapshots.findLast(
+          (snapshot) => snapshot.marketDate <= eligibleMarketDate,
+        );
+
+        if (!latestCompletedSnapshot) {
+          throw new Error("Market data response contained no completed prices");
+        }
 
         for (const target of symbolTargets) {
           try {
@@ -152,14 +164,14 @@ export async function runAlertChecks(
 
             if (
               lastProcessedMarketDate &&
-              latestSnapshot.marketDate <= lastProcessedMarketDate
+              latestCompletedSnapshot.marketDate <= lastProcessedMarketDate
             ) {
               summary.staleTargets += 1;
               continue;
             }
 
             const detectedSignals = detectBuySignalsForProfile({
-              indicatorSnapshots,
+              indicatorSnapshots: completedIndicatorSnapshots,
               profileId: target.profileId,
             }).filter(
               (signal) =>
@@ -170,16 +182,15 @@ export async function runAlertChecks(
               await signalRepository.upsertMany(detectedSignals);
             summary.createdSignals += recordedSignals.length;
 
-            const eligibleDetectedSignals =
-              latestSnapshot.marketDate === eligibleMarketDate
-                ? detectedSignals.filter(
-                    (signal) => signal.marketDate === eligibleMarketDate,
-                  )
-                : [];
+            const eligibleDetectedSignals = detectedSignals.filter(
+              (signal) =>
+                signal.marketDate === latestCompletedSnapshot.marketDate,
+            );
 
             if (eligibleDetectedSignals.length > 0) {
               const recordedEligibleSignals = recordedSignals.filter(
-                (signal) => signal.marketDate === eligibleMarketDate,
+                (signal) =>
+                  signal.marketDate === latestCompletedSnapshot.marketDate,
               );
               const eligibleSignals =
                 recordedEligibleSignals.length ===
@@ -193,29 +204,34 @@ export async function runAlertChecks(
                 throw new Error("Eligible signals were not persisted");
               }
 
-              const group = digestCandidates.get(target.profileId) ?? {
+              const digestKey = digestCandidateKey(
+                target.profileId,
+                latestCompletedSnapshot.marketDate,
+              );
+              const group = digestCandidates.get(digestKey) ?? {
                 assets: new Map<string, BuySignalDigestAsset>(),
                 checkpoints: [],
+                marketDate: latestCompletedSnapshot.marketDate,
                 signals: [],
                 target,
               };
               group.assets.set(symbol, {
-                currency: latestSnapshot.currency,
-                currentPrice: latestSnapshot.close,
+                currency: latestCompletedSnapshot.currency,
+                currentPrice: latestCompletedSnapshot.close,
                 logoUrl: target.logoUrl,
                 longName: target.longName,
                 symbol,
               });
               group.signals.push(...eligibleSignals);
               group.checkpoints.push({
-                marketDate: latestSnapshot.marketDate,
+                marketDate: latestCompletedSnapshot.marketDate,
                 profileId: target.profileId,
                 symbol,
               });
-              digestCandidates.set(target.profileId, group);
+              digestCandidates.set(digestKey, group);
             } else {
               await alertCheckCheckpointRepository.markProcessed({
-                marketDate: latestSnapshot.marketDate,
+                marketDate: latestCompletedSnapshot.marketDate,
                 profileId: target.profileId,
                 symbol,
               });
@@ -234,6 +250,7 @@ export async function runAlertChecks(
     for (const {
       assets,
       checkpoints,
+      marketDate,
       signals,
       target,
     } of digestCandidates.values()) {
@@ -242,7 +259,7 @@ export async function runAlertChecks(
           {
             assets: [...assets.values()],
             emailAlertsEnabled: target.emailAlertsEnabled,
-            marketDate: eligibleMarketDate,
+            marketDate,
             recipientEmail: target.recipientEmail,
             signals,
           },
@@ -338,6 +355,10 @@ function groupTargetsBySymbol(targets: AlertCheckTarget[]) {
   }, new Map<string, AlertCheckTarget[]>());
 }
 
+function digestCandidateKey(profileId: string, marketDate: string) {
+  return `${profileId}\u0000${marketDate}`;
+}
+
 function mergePriceHistory(
   storedSnapshots: PriceSnapshot[],
   fetchedSnapshots: PriceSnapshot[],
@@ -402,11 +423,17 @@ function marketDataFetchWindows(
       ? bootstrapStartDate
       : latestStoredDate;
 
-  if (refreshStartDate < endDate) {
+  if (refreshStartDate <= endDate) {
     windows.push({ endDate, startDate: refreshStartDate });
   }
 
   return windows;
+}
+
+function shiftCalendarDays(calendarDate: string, days: number) {
+  const date = new Date(`${calendarDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 function shiftCalendarMonths(calendarDate: string, months: number) {
