@@ -58,6 +58,10 @@ vi.mock("@/features/jobs/server/retry-check-alerts-job.action", () => ({
   retryCheckAlertsJob: vi.fn(),
 }));
 
+vi.mock("@/features/jobs/server/trigger-check-alerts-job.action", () => ({
+  triggerCheckAlertsJob: vi.fn(),
+}));
+
 vi.mock("@/features/jobs/infrastructure/drizzle-job-run-repository", () => ({
   createDrizzleJobRunRepository: createDrizzleJobRunRepositoryMock,
 }));

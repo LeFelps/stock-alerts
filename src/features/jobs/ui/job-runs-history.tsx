@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { CircleHelp, Copy, LoaderCircle, RotateCcw } from "lucide-react";
+import { CircleHelp, Copy, LoaderCircle, Play, RotateCcw } from "lucide-react";
 import { startTransition, useState } from "react";
 import { toast } from "sonner";
 
@@ -21,14 +21,18 @@ import {
   retryCheckAlertsJob,
   type RetryCheckAlertsJobResult,
 } from "../server/retry-check-alerts-job.action";
+import { triggerCheckAlertsJob } from "../server/trigger-check-alerts-job.action";
 
 export function JobRunsHistory({ jobRuns }: { jobRuns: JobRun[] }) {
   if (jobRuns.length === 0) {
     return (
-      <EmptyState
-        description="As execuções aparecem aqui quando a rotina de verificação de alertas é acionada."
-        title="Nenhuma execução registrada."
-      />
+      <div className="grid gap-3">
+        <JobRunActions retryDisabled />
+        <EmptyState
+          description="As execuções aparecem aqui quando a rotina de verificação de alertas é acionada."
+          title="Nenhuma execução registrada."
+        />
+      </div>
     );
   }
 
@@ -40,7 +44,7 @@ export function JobRunsHistory({ jobRuns }: { jobRuns: JobRun[] }) {
       getRowId={(jobRun) => jobRun.id}
       searchPlaceholder="Buscar execuções…"
       toolbarAction={
-        <RetryCheckAlertsButton disabled={jobRuns.at(0)?.status !== "FAILED"} />
+        <JobRunActions retryDisabled={jobRuns.at(0)?.status !== "FAILED"} />
       }
     />
   );
@@ -121,6 +125,61 @@ const jobRunColumnLabels = {
   symbols: "Ativos",
 };
 
+function JobRunActions({ retryDisabled }: { retryDisabled: boolean }) {
+  return (
+    <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
+      <TriggerCheckAlertsButton />
+      <RetryCheckAlertsButton disabled={retryDisabled} />
+    </div>
+  );
+}
+
+function TriggerCheckAlertsButton() {
+  const [pending, setPending] = useState(false);
+
+  function trigger() {
+    if (pending) return;
+    setPending(true);
+
+    startTransition(async () => {
+      try {
+        const formData = new FormData();
+        formData.set("intent", "trigger");
+        const result = await triggerCheckAlertsJob(formData);
+
+        if (result.status === "success") {
+          toast.success("Execução concluída com sucesso.");
+          return;
+        }
+
+        toast.error("A execução falhou. Consulte o erro mais recente.");
+      } catch {
+        toast.error("Não foi possível executar a rotina. Tente novamente.");
+      } finally {
+        setPending(false);
+      }
+    });
+  }
+
+  return (
+    <Button
+      aria-busy={pending}
+      className="w-full sm:w-auto"
+      disabled={pending}
+      onClick={trigger}
+      size="sm"
+      type="button"
+    >
+      {pending ? (
+        <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+      ) : (
+        <Play aria-hidden="true" className="size-4" />
+      )}
+      {pending ? "Executando…" : "Executar agora"}
+    </Button>
+  );
+}
+
 function RetryCheckAlertsButton({ disabled }: { disabled: boolean }) {
   const [pending, setPending] = useState(false);
 
@@ -151,7 +210,7 @@ function RetryCheckAlertsButton({ disabled }: { disabled: boolean }) {
   return (
     <Button
       aria-busy={pending}
-      className="w-full sm:ml-auto sm:w-auto"
+      className="w-full sm:w-auto"
       disabled={disabled || pending}
       onClick={retry}
       size="sm"
