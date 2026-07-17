@@ -5,11 +5,17 @@ import { z } from "zod";
 
 import { requireSuperProfile } from "@/features/profiles/server/current-profile";
 
-import { runCheckAlertsJob } from "./check-alerts-job";
+import {
+  AlertCheckJobAlreadyRunningError,
+  runCheckAlertsJob,
+} from "./check-alerts-job";
 
 export type TriggerCheckAlertsJobResult =
   | { jobRunId: string; status: "success" }
-  | { error: "job_failed" | "validation_error"; status: "error" };
+  | {
+      error: "already_running" | "job_failed" | "validation_error";
+      status: "error";
+    };
 
 const triggerCheckAlertsJobSchema = z.object({
   intent: z.literal("trigger"),
@@ -37,7 +43,11 @@ export async function triggerCheckAlertsJob(
     }
 
     return { jobRunId: result.jobRun.id, status: "success" };
-  } catch {
+  } catch (error) {
+    if (error instanceof AlertCheckJobAlreadyRunningError) {
+      return { error: "already_running", status: "error" };
+    }
+
     revalidateAlertCheckPaths();
     return { error: "job_failed", status: "error" };
   }

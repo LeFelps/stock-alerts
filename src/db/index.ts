@@ -13,11 +13,11 @@ const globalForDb = globalThis as typeof globalThis & {
   postgresClient?: postgres.Sql;
 };
 
-const client =
+export const postgresClient =
   globalForDb.postgresClient ?? postgres(databaseUrl, { prepare: false });
 
 if (process.env.NODE_ENV !== "production") {
-  globalForDb.postgresClient = client;
+  globalForDb.postgresClient = postgresClient;
 }
 
-export const db = drizzle(client, { schema });
+export const db = drizzle(postgresClient, { schema });

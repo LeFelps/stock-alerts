@@ -5,8 +5,12 @@ import { toJobRunId } from "@/features/jobs/domain/job-run";
 import { GET } from "./route";
 
 const runCheckAlertsJobMock = vi.hoisted(() => vi.fn());
+const AlertCheckJobAlreadyRunningErrorMock = vi.hoisted(
+  () => class AlertCheckJobAlreadyRunningError extends Error {},
+);
 
 vi.mock("@/features/jobs/server/check-alerts-job", () => ({
+  AlertCheckJobAlreadyRunningError: AlertCheckJobAlreadyRunningErrorMock,
   runCheckAlertsJob: runCheckAlertsJobMock,
 }));
 
@@ -81,6 +85,24 @@ describe("/api/cron/check-alerts", () => {
       jobRunId: "job-run-1",
       status: "FAILED",
       summary: expect.any(Object),
+    });
+  });
+
+  it("rejects an overlapping alert check", async () => {
+    process.env.CRON_SECRET = "secret-value";
+    runCheckAlertsJobMock.mockRejectedValue(
+      new AlertCheckJobAlreadyRunningErrorMock(),
+    );
+
+    const response = await GET(
+      new Request("https://example.com/api/cron/check-alerts", {
+        headers: { authorization: "Bearer secret-value" },
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "Alert check job is already running",
     });
   });
 });

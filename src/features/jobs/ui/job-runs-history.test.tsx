@@ -135,6 +135,22 @@ describe("JobRunsHistory", () => {
     );
   });
 
+  it("explains when another alert check is already running", async () => {
+    triggerCheckAlertsJobMock.mockResolvedValue({
+      error: "already_running",
+      status: "error",
+    });
+    render(<JobRunsHistory jobRuns={[createJobRun({ status: "SUCCESS" })]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Executar agora" }));
+
+    await waitFor(() =>
+      expect(toastErrorMock).toHaveBeenCalledWith(
+        "A rotina já está em execução.",
+      ),
+    );
+  });
+
   it("allows the first run to be triggered from the empty state", () => {
     render(<JobRunsHistory jobRuns={[]} />);
 

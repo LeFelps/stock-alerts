@@ -8,12 +8,19 @@ import { requireSuperProfile } from "@/features/profiles/server/current-profile"
 import { listRecentJobRuns } from "../application/manage-job-runs";
 import { eligibleMarketDateForAlertCheck } from "../domain/eligible-market-date";
 import { createDrizzleJobRunRepository } from "../infrastructure/drizzle-job-run-repository";
-import { runCheckAlertsJob } from "./check-alerts-job";
+import {
+  AlertCheckJobAlreadyRunningError,
+  runCheckAlertsJob,
+} from "./check-alerts-job";
 
 export type RetryCheckAlertsJobResult =
   | { jobRunId: string; status: "success" }
   | {
-      error: "job_failed" | "not_retryable" | "validation_error";
+      error:
+        | "already_running"
+        | "job_failed"
+        | "not_retryable"
+        | "validation_error";
       status: "error";
     };
 
@@ -56,7 +63,11 @@ export async function retryCheckAlertsJob(
     }
 
     return { jobRunId: result.jobRun.id, status: "success" };
-  } catch {
+  } catch (error) {
+    if (error instanceof AlertCheckJobAlreadyRunningError) {
+      return { error: "already_running", status: "error" };
+    }
+
     revalidateAlertCheckPaths();
     return { error: "job_failed", status: "error" };
   }

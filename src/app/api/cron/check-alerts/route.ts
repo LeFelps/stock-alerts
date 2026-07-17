@@ -1,4 +1,7 @@
-import { runCheckAlertsJob } from "@/features/jobs/server/check-alerts-job";
+import {
+  AlertCheckJobAlreadyRunningError,
+  runCheckAlertsJob,
+} from "@/features/jobs/server/check-alerts-job";
 import { isAuthorizedCronRequest } from "@/features/jobs/server/is-authorized-cron-request";
 
 export const dynamic = "force-dynamic";
@@ -8,15 +11,26 @@ export async function GET(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = await runCheckAlertsJob();
+  try {
+    const result = await runCheckAlertsJob();
 
-  return Response.json(
-    {
-      jobRunId: result.jobRun.id,
-      status: result.jobRun.status,
-      summary: result.jobRun.summary,
-      ...(result.ok ? {} : { error: result.error }),
-    },
-    { status: result.ok ? 200 : 500 },
-  );
+    return Response.json(
+      {
+        jobRunId: result.jobRun.id,
+        status: result.jobRun.status,
+        summary: result.jobRun.summary,
+        ...(result.ok ? {} : { error: result.error }),
+      },
+      { status: result.ok ? 200 : 500 },
+    );
+  } catch (error) {
+    if (error instanceof AlertCheckJobAlreadyRunningError) {
+      return Response.json(
+        { error: "Alert check job is already running" },
+        { status: 409 },
+      );
+    }
+
+    throw error;
+  }
 }
