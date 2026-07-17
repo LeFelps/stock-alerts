@@ -54,7 +54,7 @@ describe("runAlertChecks", () => {
     );
     expect(deps.marketDataProvider.fetchDailyPrices).toHaveBeenCalledWith(
       "PETR4",
-      expect.objectContaining({ endDate: "2026-07-18" }),
+      expect.objectContaining({ endDate: "2026-07-20" }),
     );
     expect(deps.emailDeliveryProvider.sendBuySignalDigest).toHaveBeenCalledWith(
       expect.objectContaining({
